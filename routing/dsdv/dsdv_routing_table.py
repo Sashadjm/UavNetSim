@@ -14,7 +14,7 @@ class DsdvRoutingTable(BaseTable):
 
     Attributes:
         env: simulation environment
-        my_drone: the drone that keeps this routing table
+        my_node: the node that keeps this routing table
 
     References:
         [1] Perkins, C. E., and Bhagwat, P.,"Highly dynamic destination-sequenced distance-vector routing (DSDV) for
@@ -27,28 +27,28 @@ class DsdvRoutingTable(BaseTable):
     Updated at: 2026/3/10
     """
 
-    def __init__(self, env, my_drone):
-        super().__init__(env, my_drone)
+    def __init__(self, env, my_node):
+        super().__init__(env, my_node)
         self.env = env
-        self.my_drone = my_drone
+        self.my_node = my_node
 
         # Initialize the routing table, sequence number if even number
-        self.table[self.my_drone.identifier] = [self.my_drone.identifier, 0, self.my_drone.identifier*2, self.env.now]
+        self.table[self.my_node.identifier] = [self.my_node.identifier, 0, self.my_node.identifier*2, self.env.now]
 
     # Update item according to the receiving packet
     def update_item(self, packet, cur_time):
-        src_drone = packet.src_drone
-        if src_drone is not self.my_drone:  # the hello packet is not broadcast by myself
+        src_node = packet.src_node
+        if src_node is not self.my_node:  # the hello packet is not broadcast by myself
             for dst_id in packet.routing_table.keys():
                 metric = packet.routing_table[dst_id][1]
                 seq_num = packet.routing_table[dst_id][2]
                 if dst_id not in self.table.keys():
-                    self.table[dst_id] = [src_drone.identifier, metric+1, seq_num, cur_time]
+                    self.table[dst_id] = [src_node.identifier, metric+1, seq_num, cur_time]
                 elif seq_num > self.table[dst_id][2]:
-                    self.table[dst_id] = [src_drone.identifier, metric+1, seq_num, cur_time]
+                    self.table[dst_id] = [src_node.identifier, metric+1, seq_num, cur_time]
                 elif seq_num == self.table[dst_id][2]:
                     if metric < self.table[dst_id][1]:
-                        self.table[dst_id] = [src_drone.identifier, metric+1, seq_num, cur_time]
+                        self.table[dst_id] = [src_node.identifier, metric+1, seq_num, cur_time]
                 else:
                     pass
 
@@ -60,7 +60,7 @@ class DsdvRoutingTable(BaseTable):
             return flag
 
         for key in list(self.table):
-            if key is not self.my_drone.identifier:
+            if key is not self.my_node.identifier:
                 updated_time = self.get_updated_time(key)
                 if updated_time + self.entry_life_time < self.env.now:
                     expired_next_hop = self.table[key][0]  # expired next hop
@@ -79,17 +79,17 @@ class DsdvRoutingTable(BaseTable):
     # Determine if it has the valid item to certain destination
     def has_entry(self, dst_id):
         if dst_id not in self.table.keys():
-            next_hop_id = self.my_drone.identifier
+            next_hop_id = self.my_node.identifier
         elif self.table[dst_id][1] != float('inf'):
             # get the next hop to the destination
             next_hop_id = self.table[dst_id][0]
         else:
-            next_hop_id = self.my_drone.identifier
+            next_hop_id = self.my_node.identifier
 
         return next_hop_id
 
-    def print_item(self, my_drone):
-        logger.info('|----------Routing Table of: %s ----------|', my_drone.identifier)
+    def print_item(self, my_node):
+        logger.info('|----------Routing Table of: %s ----------|', my_node.identifier)
         for key in self.table.keys():
             logger.info('Dst_id: %s, next hop is: %s, metric is: %s, seq_num (dst_id) is: %s, updated time is: %s',
                          key, self.table[key][0], self.table[key][1], self.table[key][2],

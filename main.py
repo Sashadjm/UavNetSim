@@ -15,8 +15,10 @@ from visualization.visualizer import SimulationVisualizer
 if __name__ == "__main__":
     # Simulation setup
     env = simpy.Environment()
-    channel_states = {i: simpy.Resource(env, capacity=1) for i in range(config.NUMBER_OF_DRONES)}
-    sim = Simulator(seed=2025, env=env, channel_states=channel_states, n_drones=config.NUMBER_OF_DRONES)
+
+    channel_states = {i: simpy.Resource(env, capacity=1) for i in range(config.NUMBER_OF_DRONES + config.NUMBER_OF_USERS)}
+
+    sim = Simulator(seed=2025, env=env, channel_states=channel_states, n_drones=config.NUMBER_OF_DRONES, n_users=config.NUMBER_OF_USERS)
     
     # Add the visualizer to the simulator
     # Use 20000 microseconds (0.02s) as the visualization frame interval

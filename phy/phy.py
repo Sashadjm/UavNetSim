@@ -16,7 +16,7 @@ class Phy:
     Attributes:
         mac: mac protocol that installed
         env: simulation environment created by simpy
-        my_drone: the drone that installed the physical protocol
+        my_node: the node that installed the physical protocol
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
@@ -26,7 +26,7 @@ class Phy:
     def __init__(self, mac):
         self.mac = mac
         self.env = mac.env
-        self.my_drone = mac.my_drone
+        self.my_node = mac.my_node
 
     def unicast(self, packet, next_hop_id):
         """
@@ -34,17 +34,17 @@ class Phy:
 
         Parameters:
             packet: the data packet or ACK packet that needs to be transmitted
-            next_hop_id: the identifier of the next hop drone
+            next_hop_id: the identifier of the next hop node
         """
 
         # energy consumption
         energy_consumption = (packet.packet_length / config.BIT_RATE) * config.TRANSMITTING_POWER
-        self.my_drone.residual_energy -= energy_consumption
+        self.my_node.residual_energy -= energy_consumption
 
         # transmit through the channel
-        message = [packet, self.env.now, self.my_drone.identifier, 0, packet.channel_id]
+        message = [packet, self.env.now, self.my_node.identifier, 0, packet.channel_id]
 
-        self.my_drone.simulator.channel.unicast_put(message, next_hop_id)
+        self.my_node.simulator.channel.unicast_put(message, next_hop_id)
 
     def broadcast(self, packet):
         """
@@ -56,12 +56,12 @@ class Phy:
 
         # energy consumption
         energy_consumption = (packet.packet_length / config.BIT_RATE) * config.TRANSMITTING_POWER
-        self.my_drone.residual_energy -= energy_consumption
+        self.my_node.residual_energy -= energy_consumption
 
         # transmit through the channel
-        message = [packet, self.env.now, self.my_drone.identifier, 0, packet.channel_id]
+        message = [packet, self.env.now, self.my_node.identifier, 0, packet.channel_id]
 
-        self.my_drone.simulator.channel.broadcast_put(message)
+        self.my_node.simulator.channel.broadcast_put(message)
 
     def multicast(self, packet, dst_id_list):
         """
@@ -77,9 +77,9 @@ class Phy:
 
         # energy consumption
         energy_consumption = (packet.packet_length / config.BIT_RATE) * config.TRANSMITTING_POWER
-        self.my_drone.residual_energy -= energy_consumption
+        self.my_node.residual_energy -= energy_consumption
 
         # transmit through the channel
-        message = [packet, self.env.now, self.my_drone.identifier, packet.channel_id]
+        message = [packet, self.env.now, self.my_node.identifier, packet.channel_id]
 
-        self.my_drone.simulator.channel.multicast_put(message, dst_id_list)
+        self.my_node.simulator.channel.multicast_put(message, dst_id_list)

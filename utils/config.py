@@ -9,6 +9,8 @@ MAP_WIDTH = 600  # m, width of the map
 MAP_HEIGHT = 100  # m, height of the map
 SIM_TIME = 30 * 1e6  # us, total simulation time
 NUMBER_OF_DRONES = 10  # number of drones in the network
+NUMBER_OF_USERS = 0 # number of users in the network
+NUMBER_OF_NODES = NUMBER_OF_DRONES + NUMBER_OF_USERS
 GRID_RESOLUTION = 20  # grid the map for path planning
 STATIC_CASE = 0  # whether to simulate a static network
 HETEROGENEOUS = 0  # heterogeneous network support (in terms of speed)
@@ -30,6 +32,8 @@ INITIAL_ENERGY = 20 * 1e3  # in joule
 ENERGY_THRESHOLD = 2000  # in joule
 MAX_QUEUE_SIZE = 200  # maximum size of drone's queue
 
+# ----------------------- hardware parameters of users ----------------------- #
+
 # ----------------------- radio parameters ----------------------- #
 TRANSMITTING_POWER = 0.1  # in Watt
 LIGHT_SPEED = 3 * 1e8  # light speed (m/s)
@@ -42,7 +46,7 @@ SNR_THRESHOLD = IEEE_802_11['snr_threshold']
 VARIABLE_PAYLOAD_LENGTH = 0  # whether to consider random payload length of data packet
 AVERAGE_PAYLOAD_LENGTH = 1024 * 8  # in bit, 1024 bytes
 MAXIMUM_PAYLOAD_VARIATION = 1600  # in bit
-MAX_TTL = NUMBER_OF_DRONES + 1  # maximum time-to-live value
+MAX_TTL = NUMBER_OF_NODES + 1  # maximum time-to-live value
 PACKET_LIFETIME = 10 * 1e6  # 10s
 IP_HEADER_LENGTH = 20 * 8  # header length in network layer, 20 byte
 MAC_HEADER_LENGTH = 14 * 8  # header length in mac layer, 14 byte

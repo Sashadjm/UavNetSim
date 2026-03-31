@@ -12,12 +12,12 @@ class Packet:
         creation_time: the generation time of the packet
         deadline: maximum segment lifetime of packet, in second
         __ttl: current "Time to live (TTL)"
-        number_retransmission_attempt: record the number of retransmissions of packet on different drones
-        waiting_start_time: the time at which tha packet is added to the "transmitting queue" of drone
+        number_retransmission_attempt: record the number of retransmissions of packet on different nodes
+        waiting_start_time: the time at which tha packet is added to the "transmitting queue" of node
         first_attempt_time: the time at which the packet starts the backoff stage
         transmitting_start_time: the time at which the packet can be transmitted to the channel after backoff
         time_delivery: the time at which the packet arrives at its destination
-        time_transmitted_at_last_hop: the transmitting time at last drone
+        time_transmitted_at_last_hop: the transmitting time at last node
         transmission_mode: unicast or multicast or broadcast?
         channel_id: the identity of the channel that used to transmit this packet
 
@@ -43,8 +43,8 @@ class Packet:
 
         self.number_retransmission_attempt = {}
 
-        for drone in self.simulator.drones:
-            self.number_retransmission_attempt[drone.identifier] = 0  # initialization
+        for node in self.simulator.network_nodes:
+            self.number_retransmission_attempt[node.identifier] = 0  # initialization
 
         # for calculating the queuing delay
         self.waiting_start_time = None
@@ -55,7 +55,7 @@ class Packet:
         self.time_transmitted_at_last_hop = 0
         self.transmission_mode = None
 
-        self.intermediate_drones = []
+        self.intermediate_nodes = []
 
     def increase_ttl(self):
         self.__ttl += 1
@@ -69,10 +69,10 @@ class DataPacket(Packet):
     Basic properties of the data packet
 
     Attributes:
-        src_drone: source drone that originates the data packet
-        dst_drone: destination drone of this data packet
+        src_node: source node that originates the data packet
+        dst_node: destination node of this data packet
         routing_path: record to whole routing path in centralized routing protocol
-        next_hop_id: identifier of the next hop drone
+        next_hop_id: identifier of the next hop node
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
@@ -80,8 +80,8 @@ class DataPacket(Packet):
     """
 
     def __init__(self,
-                 src_drone,
-                 dst_drone,
+                 src_node,
+                 dst_node,
                  creation_time,
                  data_packet_id,
                  data_packet_length,
@@ -89,8 +89,8 @@ class DataPacket(Packet):
                  channel_id):
         super().__init__(data_packet_id, data_packet_length, creation_time, simulator, channel_id)
 
-        self.src_drone = src_drone
-        self.dst_drone = dst_drone
+        self.src_node = src_node
+        self.dst_node = dst_node
 
         self.routing_path = None  # for centralized routing protocols
         self.next_hop_id = None  # next hop for this data packet
@@ -98,8 +98,8 @@ class DataPacket(Packet):
 
 class AckPacket(Packet):
     def __init__(self,
-                 src_drone,
-                 dst_drone,
+                 src_node,
+                 dst_node,
                  ack_packet_id,
                  ack_packet_length,
                  ack_packet,
@@ -108,7 +108,7 @@ class AckPacket(Packet):
                  creation_time=None):
         super().__init__(ack_packet_id, ack_packet_length, creation_time, simulator, channel_id)
 
-        self.src_drone = src_drone
-        self.dst_drone = dst_drone
+        self.src_node = src_node
+        self.dst_node = dst_node
 
         self.ack_packet = ack_packet

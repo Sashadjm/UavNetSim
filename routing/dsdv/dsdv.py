@@ -19,7 +19,7 @@ class Dsdv:
 
     Attributes:
         simulator: the simulation platform that contains everything
-        my_drone: the drone that installed the DSDV
+        my_node: the node that installed the DSDV
         rng_routing: a Random class based on which we can call the function that generates the random number
         hello_interval: interval of sending hello packet
         routing_table: routing table of DSDV
@@ -36,26 +36,26 @@ class Dsdv:
     Updated at: 2025/4/22
     """
 
-    def __init__(self, simulator, my_drone):
+    def __init__(self, simulator, my_node):
         self.simulator = simulator
-        self.my_drone = my_drone
-        self.rng_routing = random.Random(self.my_drone.identifier + self.my_drone.simulator.seed + 10)
+        self.my_node = my_node
+        self.rng_routing = random.Random(self.my_node.identifier + self.my_node.simulator.seed + 10)
         self.hello_interval = 0.5 * 1e6  # broadcast routing table periodically
         self.purge_interval = 0.5 * 1e6  # check broken links periodically
-        self.check_interval = 0.6 * 1e6  # check waiting list of drone periodically
-        self.routing_table = DsdvRoutingTable(self.simulator.env, my_drone)
+        self.check_interval = 0.6 * 1e6  # check waiting list of node periodically
+        self.routing_table = DsdvRoutingTable(self.simulator.env, my_node)
         self.processed_hello_packet = []
         self.simulator.env.process(self.broadcast_hello_packet_periodically())
-        self.simulator.env.process(self.detect_broken_link_periodically(my_drone))
+        self.simulator.env.process(self.detect_broken_link_periodically(my_node))
         self.simulator.env.process(self.check_waiting_list())
 
-    def detect_broken_link_periodically(self, my_drone):
+    def detect_broken_link_periodically(self, my_node):
         """
         If a node finds that it has not received a hello packet from a neighbor for more than a period of time, it can
         be considered that the link is broken and an update packet needs to be broadcast immediately
 
         Parameters:
-            my_drone: the node that installs the protocol
+            my_node: the node that installs the protocol
         """
 
         while True:
@@ -66,9 +66,9 @@ class Dsdv:
                 config.GL_ID_HELLO_PACKET += 1
 
                 # channel assignment
-                channel_id = self.my_drone.channel_assigner.channel_assign()
+                channel_id = self.my_node.channel_assigner.channel_assign()
 
-                hello_pkd = DsdvHelloPacket(src_drone=my_drone,
+                hello_pkd = DsdvHelloPacket(src_node=my_node,
                                             creation_time=self.simulator.env.now,
                                             id_hello_packet=config.GL_ID_HELLO_PACKET,
                                             hello_packet_length=config.HELLO_PACKET_LENGTH,
@@ -78,20 +78,20 @@ class Dsdv:
                                             channel_id=channel_id)
                 hello_pkd.transmission_mode = 1  # broadcast
 
-                logger.info('At time: %s (us) ---- UAV: %s broadcast a hello packet to announce broken links',
-                             self.simulator.env.now, self.my_drone.identifier)
+                logger.info('At time: %s (us) ---- node: %s broadcast a hello packet to announce broken links',
+                             self.simulator.env.now, self.my_node.identifier)
 
                 self.simulator.metrics.control_packet_num += 1
-                self.my_drone.transmitting_queue.put(hello_pkd)
+                self.my_node.transmitting_queue.put(hello_pkd)
 
-    def broadcast_hello_packet(self, my_drone):
+    def broadcast_hello_packet(self, my_node):
         config.GL_ID_HELLO_PACKET += 1
 
         # channel assignment
-        channel_id = self.my_drone.channel_assigner.channel_assign()
+        channel_id = self.my_node.channel_assigner.channel_assign()
 
-        self.routing_table.table[self.my_drone.identifier][2] += 2  # important!
-        hello_pkd = DsdvHelloPacket(src_drone=my_drone,
+        self.routing_table.table[self.my_node.identifier][2] += 2  # important!
+        hello_pkd = DsdvHelloPacket(src_node=my_node,
                                     creation_time=self.simulator.env.now,
                                     id_hello_packet=config.GL_ID_HELLO_PACKET,
                                     hello_packet_length=config.HELLO_PACKET_LENGTH,
@@ -101,15 +101,15 @@ class Dsdv:
                                     channel_id=channel_id)
         hello_pkd.transmission_mode = 1  # broadcast
 
-        logger.info('At time: %s (us) ---- UAV: %s has a hello packet to broadcast',
-                     self.simulator.env.now, self.my_drone.identifier)
+        logger.info('At time: %s (us) ---- node: %s has a hello packet to broadcast',
+                     self.simulator.env.now, self.my_node.identifier)
 
         self.simulator.metrics.control_packet_num += 1
-        self.my_drone.transmitting_queue.put(hello_pkd)
+        self.my_node.transmitting_queue.put(hello_pkd)
 
     def broadcast_hello_packet_periodically(self):
         while True:
-            self.broadcast_hello_packet(self.my_drone)
+            self.broadcast_hello_packet(self.my_node)
             jitter = self.rng_routing.randint(1000, 2000)  # delay jitter
             yield self.simulator.env.timeout(self.hello_interval+jitter)
 
@@ -121,23 +121,23 @@ class Dsdv:
             packet: the data packet that needs to be sent
 
         Returns:
-            Next hop drone
+            Next hop node
         """
 
         has_route = True
         enquire = False  # "True" when reactive protocol is adopted
 
-        dst_drone = packet.dst_drone
+        dst_node = packet.dst_node
 
-        best_next_hop_id = self.routing_table.has_entry(dst_drone.identifier)
-        if best_next_hop_id is self.my_drone.identifier:
+        best_next_hop_id = self.routing_table.has_entry(dst_node.identifier)
+        if best_next_hop_id is self.my_node.identifier:
             has_route = False  # no available next hop
         else:
-            packet.next_hop_id = best_next_hop_id  # it has an available next hop drone
+            packet.next_hop_id = best_next_hop_id  # it has an available next hop node
 
         return has_route, packet, enquire
 
-    def packet_reception(self, packet, src_drone_id):
+    def packet_reception(self, packet, src_node_id):
         """
         Packet reception at network layer
 
@@ -146,7 +146,7 @@ class Dsdv:
 
         Parameters:
             packet: the received packet
-            src_drone_id: previous hop
+            src_node_id: previous hop
         """
 
         current_time = self.simulator.env.now
@@ -155,7 +155,7 @@ class Dsdv:
 
             if packet_type == 'periodic':
                 self.routing_table.update_item(packet, current_time)
-                # self.routing_table.print_item(self.my_drone)
+                # self.routing_table.print_item(self.my_node)
             elif packet_type == 'immediate':
                 self.routing_table.update_item(packet, current_time)
                 packet_id = packet.packet_id
@@ -163,9 +163,9 @@ class Dsdv:
                     self.processed_hello_packet.append(packet_id)
 
                     # channel assignment
-                    channel_id = self.my_drone.channel_assigner.channel_assign()
+                    channel_id = self.my_node.channel_assigner.channel_assign()
 
-                    hello_pkd = DsdvHelloPacket(src_drone=self.my_drone,
+                    hello_pkd = DsdvHelloPacket(src_node=self.my_node,
                                                 creation_time=self.simulator.env.now,
                                                 id_hello_packet=packet_id,
                                                 hello_packet_length=config.HELLO_PACKET_LENGTH,
@@ -176,21 +176,23 @@ class Dsdv:
                     hello_pkd.transmission_mode = 1  # broadcast
 
                     self.simulator.metrics.control_packet_num += 1
-                    self.my_drone.transmitting_queue.put(hello_pkd)
+                    self.my_node.transmitting_queue.put(hello_pkd)
 
         elif isinstance(packet, DataPacket):
             packet_copy = copy.copy(packet)
-            if packet_copy.dst_drone.identifier == self.my_drone.identifier:
+
+            # Im the final destination
+            if packet_copy.dst_node.identifier == self.my_node.identifier:
                 if packet_copy.packet_id not in self.simulator.metrics.datapacket_arrived:
                     self.simulator.metrics.calculate_metrics(packet_copy)
 
-                    logger.info('At time: %s (us) ---- Data packet: %s is received by destination UAV: %s',
-                                 self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
+                    logger.info('At time: %s (us) ---- Data packet: %s is received by destination node: %s',
+                                 self.simulator.env.now, packet_copy.packet_id, self.my_node.identifier)
 
                 config.GL_ID_ACK_PACKET += 1
-                src_drone = self.simulator.drones[src_drone_id]  # previous drone
-                ack_packet = AckPacket(src_drone=self.my_drone,
-                                       dst_drone=src_drone,
+                src_node = self.simulator.network_nodes[src_node_id]  # previous node
+                ack_packet = AckPacket(src_node=self.my_node,
+                                       dst_node=src_node,
                                        ack_packet_id=config.GL_ID_ACK_PACKET,
                                        ack_packet_length=config.ACK_PACKET_LENGTH,
                                        ack_packet=packet_copy,
@@ -200,71 +202,74 @@ class Dsdv:
                 yield self.simulator.env.timeout(config.SIFS_DURATION)  # switch from receiving to transmitting
 
                 # unicast the ack packet immediately without contention for the channel
-                if not self.my_drone.sleep:
+                if not self.my_node.sleep:
                     ack_packet.increase_ttl()
-                    self.my_drone.mac_protocol.phy.unicast(ack_packet, src_drone_id)
+                    self.my_node.mac_protocol.phy.unicast(ack_packet, src_node_id)
                     yield self.simulator.env.timeout(ack_packet.packet_length / config.BIT_RATE * 1e6)
-                    self.simulator.drones[src_drone_id].receive()
+                    self.simulator.network_nodes[src_node_id].receive()
                 else:
                     pass
-            else:
-                if self.my_drone.transmitting_queue.qsize() < self.my_drone.max_queue_size:
-                    logger.info('At time: %s (us) ---- Data packet: %s is received by next hop UAV: %s',
-                                self.simulator.env.now, packet_copy.packet_id, self.my_drone.identifier)
+            #Im not the final destination but i can relay the data packet
+            elif self.node.can_relay:
+                if self.my_node.transmitting_queue.qsize() < self.my_node.max_queue_size:
+                    logger.info('At time: %s (us) ---- Data packet: %s is received by next hop node: %s',
+                                self.simulator.env.now, packet_copy.packet_id, self.my_node.identifier)
 
-                    self.my_drone.transmitting_queue.put(packet_copy)
+                    self.my_node.transmitting_queue.put(packet_copy)
 
                     config.GL_ID_ACK_PACKET += 1
-                    src_drone = self.simulator.drones[src_drone_id]  # previous drone
-                    ack_packet = AckPacket(src_drone=self.my_drone,
-                                           dst_drone=src_drone,
-                                           ack_packet_id=config.GL_ID_ACK_PACKET,
-                                           ack_packet_length=config.ACK_PACKET_LENGTH,
-                                           ack_packet=packet_copy,
-                                           simulator=self.simulator,
-                                           channel_id=packet_copy.channel_id)
+                    src_node = self.simulator.network_nodes[src_node_id]  # previous node
+                    ack_packet = AckPacket(src_node=self.my_node,
+                                        dst_node=src_node,
+                                        ack_packet_id=config.GL_ID_ACK_PACKET,
+                                        ack_packet_length=config.ACK_PACKET_LENGTH,
+                                        ack_packet=packet_copy,
+                                        simulator=self.simulator,
+                                        channel_id=packet_copy.channel_id)
 
                     yield self.simulator.env.timeout(config.SIFS_DURATION)  # switch from receiving to transmitting
 
                     # unicast the ack packet immediately without contention for the channel
-                    if not self.my_drone.sleep:
+                    if not self.my_node.sleep:
                         ack_packet.increase_ttl()
-                        self.my_drone.mac_protocol.phy.unicast(ack_packet, src_drone_id)
+                        self.my_node.mac_protocol.phy.unicast(ack_packet, src_node_id)
                         yield self.simulator.env.timeout(ack_packet.packet_length / config.BIT_RATE * 1e6)
-                        self.simulator.drones[src_drone_id].receive()
+                        self.simulator.network_nodes[src_node_id].receive()
                     else:
                         pass
                 else:
                     pass
+            else: #if is_relay is set to false (ex: user)
+                logger.info(f"Node {self.my_node.identifier} (User) dropped transit packet.")
 
         elif isinstance(packet, AckPacket):
             data_packet_acked = packet.ack_packet
 
             self.simulator.metrics.mac_delay.append((self.simulator.env.now - data_packet_acked.first_attempt_time) / 1e3)
 
-            self.my_drone.remove_from_queue(data_packet_acked)
+            self.my_node.remove_from_queue(data_packet_acked)
 
-            key2 = ''.join(['wait_ack', str(self.my_drone.identifier), '_', str(data_packet_acked.packet_id)])
+            key2 = ''.join(['wait_ack', str(self.my_node.identifier), '_', str(data_packet_acked.packet_id)])
 
-            if self.my_drone.mac_protocol.wait_ack_process_finish[key2] == 0:
-                if not self.my_drone.mac_protocol.wait_ack_process_dict[key2].triggered:
+            if self.my_node.mac_protocol.wait_ack_process_finish[key2] == 0:
+                if not self.my_node.mac_protocol.wait_ack_process_dict[key2].triggered:
                     logger.info('At time: %s (us) ---- wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
-                                 self.simulator.env.now, key2, self.my_drone.identifier, src_drone_id)
+                                 self.simulator.env.now, key2, self.my_node.identifier, src_node_id)
 
-                    self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1  # mark it as "finished"
-                    self.my_drone.mac_protocol.wait_ack_process_dict[key2].interrupt()
+                    self.my_node.mac_protocol.wait_ack_process_finish[key2] = 1  # mark it as "finished"
+                    self.my_node.mac_protocol.wait_ack_process_dict[key2].interrupt()
 
         elif isinstance(packet, VfPacket):
-            logger.info('At time: %s (us) ---- UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
-                         self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
+            logger.info('At time: %s (us) ---- UAV: %s receives the vf hello msg from node: %s, pkd id is: %s',
+                         self.simulator.env.now, self.my_node.identifier, src_node_id, packet.packet_id)
 
             # update the neighbor table
-            self.my_drone.motion_controller.neighbor_table.add_neighbor(packet, current_time)
+            self.my_node.motion_controller.neighbor_table.add_neighbor(packet, current_time)
 
             if packet.msg_type == 'hello':
                 config.GL_ID_VF_PACKET += 1
 
-                ack_packet = VfPacket(src_drone=self.my_drone,
+                ack_packet = VfPacket(src_node=self.my_node,
                                       creation_time=self.simulator.env.now,
                                       id_hello_packet=config.GL_ID_VF_PACKET,
                                       hello_packet_length=config.HELLO_PACKET_LENGTH,
@@ -272,23 +277,23 @@ class Dsdv:
                                       channel_id=packet.channel_id)
                 ack_packet.msg_type = 'ack'
 
-                self.my_drone.transmitting_queue.put(ack_packet)
+                self.my_node.transmitting_queue.put(ack_packet)
             else:
                 pass
 
     def check_waiting_list(self):
         while True:
-            if not self.my_drone.sleep:
+            if not self.my_node.sleep:
                 yield self.simulator.env.timeout(self.check_interval)
-                for waiting_pkd in self.my_drone.waiting_list:
+                for waiting_pkd in self.my_node.waiting_list:
                     if self.simulator.env.now > waiting_pkd.creation_time + waiting_pkd.deadline:
-                        self.my_drone.waiting_list.remove(waiting_pkd)
+                        self.my_node.waiting_list.remove(waiting_pkd)
                     else:
                         has_route, packet, enquire = self.next_hop_selection(waiting_pkd)
 
                         if has_route:
-                            self.my_drone.transmitting_queue.put(waiting_pkd)
-                            self.my_drone.waiting_list.remove(waiting_pkd)
+                            self.my_node.transmitting_queue.put(waiting_pkd)
+                            self.my_node.waiting_list.remove(waiting_pkd)
                         else:
                             pass
             else:
