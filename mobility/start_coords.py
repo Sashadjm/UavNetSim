@@ -1,11 +1,17 @@
 import math
 import random
 from utils import config
+from simulator import simulator
 
+def get_random_start_point_2d(sim_seed, n_points):
+    res = get_random_start_point_3d(sim_seed, n_points)
+    for i in range(n_points):
+        res[i] = tuple([res[i][0], res[i][1], 0])
+    return res
 
-def get_random_start_point_3d(sim_seed):
+def get_random_start_point_3d(sim_seed, n_points):
     start_positions = []
-    for i in range(config.NUMBER_OF_DRONES):
+    for i in range (n_points) :
         random.seed(sim_seed + i)
         position_x = random.uniform(1, config.MAP_LENGTH - 1)
         position_y = random.uniform(1, config.MAP_WIDTH - 1)

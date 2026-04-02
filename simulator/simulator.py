@@ -58,7 +58,7 @@ class Simulator:
         # NOTE: if distributed optimization is adopted, remember to comment this to speed up simulation
         # self.central_controller = CentralController(self)
 
-        start_position = start_coords.get_random_start_point_3d(seed)
+        start_position = start_coords.get_random_start_point_3d(seed, n_drones)
         # start_position = start_coords.get_customized_start_point_3d()
 
         current_id = 0
@@ -82,7 +82,7 @@ class Simulator:
             self.drones.append(drone)
             current_id += 1
 
-        start_position_user = start_coords.get_random_start_point_3d(seed)
+        start_position_user = start_coords.get_random_start_point_2d(seed,n_users)
         # start_position = start_coords.get_customized_start_point_3d()
 
         self.users = []
@@ -95,7 +95,7 @@ class Simulator:
             print('User: ', current_id, ' initial location is at: ', start_position_user[i], ' speed is: ', speed)
             user = User(env=env,
                           node_id=current_id,
-                          coords=start_position[i],
+                          coords=start_position_user[i],
                           speed=speed,
                           inbox=self.channel.create_inbox_for_receiver(i),
                           simulator=self)
@@ -123,4 +123,4 @@ class Simulator:
 
         scatter_plot(self)
 
-        self.metrics.print_metrics()
+        #self.metrics.print_metrics()

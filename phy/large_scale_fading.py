@@ -4,33 +4,33 @@ from utils import config
 from utils.util_function import euclidean_distance_3d, euclidean_distance_2d
 
 
-def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
+def sinr_calculator(my_node, main_nodes_list, all_transmitting_nodes_list):
     """
     calculate signal to signal-to-interference-plus-noise ratio
 
     Parameters:
-        my_drone: receiver drone
-        main_drones_list: list of drones that wants to transmit packet to receiver
-        all_transmitting_drones_list: list of all drones currently transmitting packet
+        my_node: receiver node
+        main_nodes_list: list of nodes that wants to transmit packet to receiver
+        all_transmitting_nodes_list: list of all nodes currently transmitting packet
 
     Returns:
-        List of sinr of each main drone
+        List of sinr of each main node
     """
 
-    simulator = my_drone.simulator
+    simulator = my_node.simulator
     transmit_power = config.TRANSMITTING_POWER
     noise_power = config.NOISE_POWER
 
     sinr_list = []  # record the sinr of all transmitter
-    receiver = my_drone
+    receiver = my_node
 
-    for pair in main_drones_list:  # each pair includes the main drone id and the channel id
-        main_drone_id = pair[0]  # drone id of main transmitter
+    for pair in main_nodes_list:  # each pair includes the main node id and the channel id
+        main_node_id = pair[0]  # node id of main transmitter
         channel_id = pair[1]  # channel id of main transmitter
-        transmitter = simulator.drones[main_drone_id]
+        transmitter = simulator.network_nodes[main_node_id]
 
-        interference_list = [x[0] for x in all_transmitting_drones_list]
-        channel_list = [x[1] for x in all_transmitting_drones_list]
+        interference_list = [x[0] for x in all_transmitting_nodes_list]
+        channel_list = [x[1] for x in all_transmitting_nodes_list]
 
         main_link_path_loss = general_path_loss(receiver, transmitter)
         receive_power = transmit_power * main_link_path_loss
@@ -39,9 +39,9 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
         real_interference_nodes = []
 
         for i in range(0, len(interference_list)):
-            if interference_list[i] != main_drone_id:  # possible interference
-                if my_drone.channel_assigner.adjacent_channel_interference_check(channel_id, channel_list[i]):
-                    interference = simulator.drones[interference_list[i]]
+            if interference_list[i] != main_node_id:  # possible interference
+                if my_node.channel_assigner.adjacent_channel_interference_check(channel_id, channel_list[i]):
+                    interference = simulator.network_nodes[interference_list[i]]
                     real_interference_nodes.append(interference_list[i])
 
                     interference_link_path_loss = general_path_loss(receiver, interference)
@@ -54,14 +54,14 @@ def sinr_calculator(my_drone, main_drones_list, all_transmitting_drones_list):
 
         if real_interference_nodes:
             logger.info('At time: %s (us) ---- Packets collision: Main node is: %s, interference node is: %s, ',
-                        simulator.env.now, main_drone_id, real_interference_nodes)
+                        simulator.env.now, main_node_id, real_interference_nodes)
 
             simulator.metrics.collision_num += 1
         else:
             pass
 
         logger.info('At time: %s (us) ---- The SINR of main link between UAV (Tx) %s and UAV (Rx) %s is: %s',
-                    simulator.env.now, main_drone_id, receiver.identifier, sinr)
+                    simulator.env.now, main_node_id, receiver.identifier, sinr)
 
         sinr_list.append(sinr)
 
@@ -77,8 +77,8 @@ def general_path_loss(receiver, transmitter):
             IEEE Internet of Things Journal, vol. 9, no. 21, pp. 21548-21560, 2022.
 
     Parameters:
-        receiver: the drone that receives the packet
-        transmitter: the drone that sends the packet
+        receiver: the node that receives the packet
+        transmitter: the node that sends the packet
 
     Returns:
         path loss
@@ -108,8 +108,8 @@ def probabilistic_los_path_loss(receiver, transmitter):
             IEEE Internet of Things Journal, vol. 9, no. 21, pp. 21548-21560, 2022.
 
     Parameters:
-        receiver: the drone that receives the packet
-        transmitter: the drone that sends the packet
+        receiver: the node that receives the packet
+        transmitter: the node that sends the packet
 
     Returns:
         path loss

@@ -210,7 +210,7 @@ class Dsdv:
                 else:
                     pass
             #Im not the final destination but i can relay the data packet
-            elif self.node.can_relay:
+            elif self.my_node.can_relay:
                 if self.my_node.transmitting_queue.qsize() < self.my_node.max_queue_size:
                     logger.info('At time: %s (us) ---- Data packet: %s is received by next hop node: %s',
                                 self.simulator.env.now, packet_copy.packet_id, self.my_node.identifier)

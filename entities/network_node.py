@@ -239,7 +239,7 @@ class NetworkNode:
             with self.buffer.request() as request:
                 yield request  # wait to enter to buffer
 
-                logger.info('At time: %s (us) ---- Packet: %s has been added to the buffer of UAV: %s, '
+                logger.info('At time: %s (us) ---- Packet: %s has been added to the buffer of NODES: %s, '
                             'waiting time is: %s',
                             self.env.now, pkd.packet_id, self.identifier, self.env.now - arrival_time)
 
@@ -248,7 +248,7 @@ class NetworkNode:
                 if pkd.number_retransmission_attempt[self.identifier] == 1:
                     pkd.time_transmitted_at_last_hop = self.env.now
 
-                logger.info('At time: %s (us) ---- Re-transmission attempts of pkd: %s at UAV: %s is: %s',
+                logger.info('At time: %s (us) ---- Re-transmission attempts of pkd: %s at NODES: %s is: %s',
                             self.env.now, pkd.packet_id, self.identifier,
                             pkd.number_retransmission_attempt[self.identifier])
 
@@ -331,7 +331,7 @@ class NetworkNode:
                         if pkd.get_current_ttl() < config.MAX_TTL:
                             sender = all_nodes_send_to_me[which_one][0]
 
-                            logger.info('At time: %s (us) ---- Packet %s from UAV: %s is received by UAV: %s, sinr is: %s',
+                            logger.info('At time: %s (us) ---- Packet %s from NODE: %s is received by UAV: %s, sinr is: %s',
                                         self.env.now, pkd.packet_id, sender, self.identifier, max_sinr)
 
                             yield self.env.process(self.routing_protocol.packet_reception(pkd, sender))

@@ -8,6 +8,8 @@ from mpl_toolkits.mplot3d import proj3d
 from matplotlib.widgets import Slider, Button, TextBox
 from utils import config
 import io
+from entities.drone import Drone
+from entities.user import User
 import matplotlib.patheffects as path_effects
 
 # Add 3D arrow class definition that handles arrows in 3D view
@@ -54,15 +56,18 @@ class SimulationVisualizer:
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize data storage structures
-        self.drone_positions = {i: [] for i in range(self.simulator.n_drones)}
+        self.node_positions = {i: [] for i in range(self.simulator.n_nodes)}
+
+        self.user_positions = {i: [] for i in range(self.simulator.n_users)}
         self.timestamps = []
-        
+
         # Comm events tracking
         self.comm_events = []  # Store tuples (src_id, dst_id, packet_id, packet_type, timestamp)
         
         # Assign a fixed color to each UAV
-        self.colors = plt.cm.tab10(np.linspace(0, 1, self.simulator.n_drones))
-        
+        self.colors = plt.cm.tab10(np.linspace(0, 1, self.simulator.n_nodes))
+
+
         # Color mapping for communication types
         self.comm_colors = {
             "DATA": "blue",
@@ -84,12 +89,12 @@ class SimulationVisualizer:
         original_unicast_put = self.simulator.channel.unicast_put
         
         # Rewrite unicast_put method to track communications
-        def tracked_unicast_put(message, dst_drone_id):
+        def tracked_unicast_put(message, dst_node_id):
             # Call the original method
-            result = original_unicast_put(message, dst_drone_id)
+            result = original_unicast_put(message, dst_node_id)
             
             # Record communication event
-            packet, _, src_drone_id, _, _ = message
+            packet, _, src_node_id, _, _ = message
             
             # Add packet type differentiation
             packet_id = packet.packet_id
@@ -102,23 +107,27 @@ class SimulationVisualizer:
             else:
                 packet_type = "DATA"
             
-            self.track_communication(src_drone_id, dst_drone_id, packet_id, packet_type)
+            self.track_communication(src_node_id, dst_node_id, packet_id, packet_type)
             
             return result
         
         # Replace the method
         self.simulator.channel.unicast_put = tracked_unicast_put
     
-    def track_drone_positions(self):
+    def track_node_positions(self):
         """
-        Record current drone positions
+        Record current node positions
         """
         current_time = self.simulator.env.now / 1e6  # Convert to seconds
         self.timestamps.append(current_time)
         
-        for i, drone in enumerate(self.simulator.drones):
-            position = drone.coords  # This already contains (x, y, z) coordinates
-            self.drone_positions[i].append(position)
+        for i, node in enumerate(self.simulator.network_nodes):
+            position = node.coords  # This already contains (x, y, z) coordinates
+            self.node_positions[i].append(position)
+
+        for i, user in enumerate(self.simulator.users):
+            position = user.coords  # This already contains (x, y, z) coordinates
+            self.user_positions[i].append(position)
     
     def track_communication(self, src_id, dst_id, packet_id, packet_type="DATA"):
         """
@@ -156,12 +165,12 @@ class SimulationVisualizer:
             ax.set_zlim(0, config.MAP_HEIGHT)
             ax.grid(True)
         
-        # Get drone positions at current time
-        drone_positions = self._get_drone_positions(current_time)
+        # Get node positions at current time
+        node_positions = self._get_node_positions(current_time)
         
-        # Draw drones on both subplots
+        # Draw nodes on both subplots
         for ax in [ax_data, ax_ack]:
-            self._draw_drones(ax, drone_positions)
+            self._draw_nodes(ax, node_positions)
         
         # Draw communication links
         display_window = self.vis_frame_interval / 1e6  # Convert to seconds
@@ -173,10 +182,10 @@ class SimulationVisualizer:
         latest_ack_comms = self._get_latest_comms(recent_comms, "ACK")
         
         # Draw DATA packet links on left subplot
-        self._draw_data_links(ax_data, latest_data_comms, drone_positions)
+        self._draw_data_links(ax_data, latest_data_comms, node_positions)
         
         # Draw ACK packet links on right subplot
-        self._draw_ack_links(ax_ack, latest_ack_comms, drone_positions)
+        self._draw_ack_links(ax_ack, latest_ack_comms, node_positions)
         
         # Add legends
         data_legend = [Line2D([0], [0], color=self.comm_colors["DATA"], lw=2, label="DATA Packets")]
@@ -298,10 +307,10 @@ class SimulationVisualizer:
         # Use vis_frame_interval directly (it's already in microseconds)
         tracking_interval_us = self.vis_frame_interval
         
-        # Start tracking drone positions
+        # Start tracking node positions
         def track_positions():
             while True:
-                self.track_drone_positions()
+                self.track_node_positions()
                 yield self.simulator.env.timeout(tracking_interval_us)
         
         # Register tracking process
@@ -390,12 +399,11 @@ class SimulationVisualizer:
                 ax.set_zlim(0, config.MAP_HEIGHT)
                 ax.grid(True)
             
-            # Get drone positions
-            drone_positions = self._get_drone_positions(current_time)
-            
-            # Draw drones on both subplots
-            self._draw_drones(ax_data, drone_positions)
-            self._draw_drones(ax_ack, drone_positions)
+            # Get node and user positions
+            node_positions = self._get_node_positions(current_time)            
+            # Draw nodes on both subplots
+            self._draw_nodes(ax_data, node_positions)
+            self._draw_nodes(ax_ack, node_positions)
             
             # Get recent communications
             display_window = self.vis_frame_interval / 1e6
@@ -407,8 +415,8 @@ class SimulationVisualizer:
             latest_ack_comms = self._get_latest_comms(recent_comms, "ACK")
             
             # Draw communication links
-            self._draw_data_links(ax_data, latest_data_comms, drone_positions)
-            self._draw_ack_links(ax_ack, latest_ack_comms, drone_positions)
+            self._draw_data_links(ax_data, latest_data_comms, node_positions)
+            self._draw_ack_links(ax_ack, latest_ack_comms, node_positions)
             
             # Add legends
             data_legend = [Line2D([0], [0], color=self.comm_colors["DATA"], lw=2, label="DATA Packets")]
@@ -467,11 +475,11 @@ class SimulationVisualizer:
         
         print("Interactive visualization created. Close the plot window to continue.")
 
-    def _get_drone_positions(self, current_time):
-        """Get drone positions at a specific time"""
-        drone_positions = {}
-        for drone_id in range(len(self.drone_positions)):
-            positions = self.drone_positions[drone_id]
+    def _get_node_positions(self, current_time):
+        """Get node positions at a specific time"""
+        node_positions = {}
+        for node_id in range(len(self.node_positions)):
+            positions = self.node_positions[node_id]
             timestamps = self.timestamps
             
             if positions and timestamps:
@@ -481,32 +489,38 @@ class SimulationVisualizer:
                 
                 # Get position at closest timestamp
                 if 0 <= closest_idx < len(positions):
-                    drone_positions[drone_id] = positions[closest_idx]
-        return drone_positions
+                    node_positions[node_id] = positions[closest_idx]
+        return node_positions
 
-    def _draw_drones(self, ax, drone_positions):
-        """Draw drones on the given axis with embedded ID numbers"""
-        for drone_id, position in drone_positions.items():
-            color = self.colors[drone_id]
+    def _draw_nodes(self, ax, node_positions):
+        """Draw nodes on the given axis with embedded ID numbers"""
+        for node_id, position in node_positions.items():
+            # couleur drone
+            node = self.simulator.network_nodes[node_id]
+            if isinstance(node, Drone):
+                color = "#9a0000"
+            # couleur user
+            elif isinstance (node, User):
+                color = "#1b4d00"
             
-            # Use smaller marker size for drone representation
+            # Use smaller marker size for node representation
             ax.scatter(position[0], position[1], position[2], 
                     color=color, s=150, alpha=0.7, edgecolors='black')
             
             # Add ID text with outline for better visibility
             # Set high zorder to ensure text appears above other elements
             text = ax.text(position[0], position[1], position[2], 
-                     f"{drone_id}", ha='center', va='center', 
+                     f"{node_id}", ha='center', va='center', 
                      color='white', fontweight='bold', fontsize=10,
                      path_effects=[path_effects.withStroke(linewidth=2, foreground='black')],
                      zorder=100)  # Ensure text is displayed on top layer
 
-    def _draw_data_links(self, ax, data_comms, drone_positions):
+    def _draw_data_links(self, ax, data_comms, node_positions):
         """Draw DATA packet links on the given axis with smaller packet ID boxes"""
         for src_id, dst_id, packet_id, _, _ in data_comms:
-            if src_id in drone_positions and dst_id in drone_positions:
-                start_pos = drone_positions[src_id]
-                end_pos = drone_positions[dst_id]
+            if src_id in node_positions and dst_id in node_positions:
+                start_pos = node_positions[src_id]
+                end_pos = node_positions[dst_id]
                 
                 # Draw an arrow for DATA packet
                 arrow = Arrow3D([start_pos[0], end_pos[0]], 
@@ -527,14 +541,14 @@ class SimulationVisualizer:
                       ha='center', va='center', fontsize=7, fontweight='bold',
                       bbox=dict(boxstyle="round,pad=0.2", facecolor='lightblue', 
                                 alpha=0.8, edgecolor=self.comm_colors["DATA"], linewidth=1.5),
-                      zorder=99)  # Display above other elements but below drone IDs
+                      zorder=99)  # Display above other elements but below node IDs
 
-    def _draw_ack_links(self, ax, ack_comms, drone_positions):
+    def _draw_ack_links(self, ax, ack_comms, node_positions):
         """Draw ACK packet links on the given axis with smaller packet ID boxes"""
         for src_id, dst_id, packet_id, _, _ in ack_comms:
-            if src_id in drone_positions and dst_id in drone_positions:
-                start_pos = drone_positions[src_id]
-                end_pos = drone_positions[dst_id]
+            if src_id in node_positions and dst_id in node_positions:
+                start_pos = node_positions[src_id]
+                end_pos = node_positions[dst_id]
                 
                 # Draw a straight line for ACK packet
                 ax.plot([start_pos[0], end_pos[0]], 
@@ -551,4 +565,4 @@ class SimulationVisualizer:
                        ha='center', va='center', fontsize=7, fontweight='bold',
                        bbox=dict(boxstyle="round,pad=0.2", facecolor='lightgreen', 
                                 alpha=0.8, edgecolor=self.comm_colors["ACK"], linewidth=1.5),
-                       zorder=99)  # Display above other elements but below drone IDs
+                       zorder=99)  # Display above other elements but below node IDs
