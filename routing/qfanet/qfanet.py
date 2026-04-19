@@ -58,7 +58,7 @@ class QFanet:
         )
         hello_pkd.transmission_mode = 1
         logger.info(
-            'At time: %s (us) ---- UAV: %s broadcasts Q-FANET HELLO (ID: %s)',
+            'At time: %s (us) ---- NODE: %s broadcasts Q-FANET HELLO (ID: %s)',
             self.simulator.env.now, self.my_drone.identifier, hello_pkd.packet_id
         )
         self.simulator.metrics.control_packet_num += 1
@@ -114,7 +114,7 @@ class QFanet:
             current_sinr = self.cal_p2p_sinr(packet_copy, src_drone_id)
             self.table.add_item(packet_copy, current_time, current_sinr)
             logger.info(
-                'At time: %s (us) ---- UAV: %s receives HELLO from %s (SINR: %.1f dB)',
+                'At time: %s (us) ---- NODE: %s receives HELLO from %s (SINR: %.1f dB)',
                 current_time, self.my_drone.identifier, src_drone_id, current_sinr
             )
         elif isinstance(packet, DataPacket):
@@ -191,7 +191,7 @@ class QFanet:
 
             if self.my_drone.mac_protocol.wait_ack_process_finish[key2] == 0:
                 if not self.my_drone.mac_protocol.wait_ack_process_dict[key2].triggered:
-                    logger.info('At time: %s (us) ---- wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
+                    logger.info('At time: %s (us) ---- wait_ack process (id: %s)of NODE:%s is interrupted by UAV: %s',
                                 self.simulator.env.now, key2, self.my_drone.identifier, src_drone_id)
 
                     self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1  # mark it as "finished"

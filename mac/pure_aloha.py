@@ -52,14 +52,14 @@ class PureAloha:
         key = ''.join(['mac_send', str(self.my_drone.identifier), '_', str(pkd.packet_id)])
         self.my_drone.mac_process_finish[key] = 1  # mark the process as "finished"
 
-        logger.info('At time: %s (us) ---- UAV: %s can send packet (pkd id: %s)',
+        logger.info('At time: %s (us) ---- NODE: %s can send packet (pkd id: %s)',
                     self.env.now, self.my_drone.identifier, pkd.packet_id)
 
         transmission_mode = pkd.transmission_mode
 
         if transmission_mode == 0:  # for unicast
             # only unicast data packets need to wait for ACK
-            logger.info('At time: %s (us) ---- UAV: %s starts to wait ACK for packet: %s',
+            logger.info('At time: %s (us) ---- NODE: %s starts to wait ACK for packet: %s',
                         self.env.now, self.my_drone.identifier, pkd.packet_id)
 
             next_hop_id = pkd.next_hop_id
@@ -117,5 +117,5 @@ class PureAloha:
 
         except simpy.Interrupt:
             # receive ACK in time
-            logger.info('At time: %s (us) ---- UAV: %s receives the ACK for data packet: %s',
+            logger.info('At time: %s (us) ---- NODE: %s receives the ACK for data packet: %s',
                         self.env.now, self.my_drone.identifier, pkd.packet_id)

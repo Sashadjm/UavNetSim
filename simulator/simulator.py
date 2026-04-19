@@ -76,7 +76,7 @@ class Simulator:
                           node_id=current_id,
                           coords=start_position[i],
                           speed=speed,
-                          inbox=self.channel.create_inbox_for_receiver(i),
+                          inbox=self.channel.create_inbox_for_receiver(current_id),
                           simulator=self)
 
             self.drones.append(drone)
@@ -97,7 +97,7 @@ class Simulator:
                           node_id=current_id,
                           coords=start_position_user[i],
                           speed=speed,
-                          inbox=self.channel.create_inbox_for_receiver(i),
+                          inbox=self.channel.create_inbox_for_receiver(current_id),
                           simulator=self)
 
             self.users.append(user)

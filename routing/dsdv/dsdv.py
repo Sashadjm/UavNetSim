@@ -6,7 +6,7 @@ from topology.virtual_force.vf_packet import VfPacket
 from routing.dsdv.dsdv_packet import DsdvHelloPacket
 from routing.dsdv.dsdv_routing_table import DsdvRoutingTable
 from utils import config
-
+from simulator.log import logger
 
 class Dsdv:
     """
@@ -78,7 +78,7 @@ class Dsdv:
                                             channel_id=channel_id)
                 hello_pkd.transmission_mode = 1  # broadcast
 
-                logger.info('At time: %s (us) ---- node: %s broadcast a hello packet to announce broken links',
+                logger.info('At time: %s (us) ---- NODE: %s broadcast a hello packet to announce broken links',
                              self.simulator.env.now, self.my_node.identifier)
 
                 self.simulator.metrics.control_packet_num += 1
@@ -101,7 +101,7 @@ class Dsdv:
                                     channel_id=channel_id)
         hello_pkd.transmission_mode = 1  # broadcast
 
-        logger.info('At time: %s (us) ---- node: %s has a hello packet to broadcast',
+        logger.info('At time: %s (us) ---- NODE: %s has a hello packet to broadcast',
                      self.simulator.env.now, self.my_node.identifier)
 
         self.simulator.metrics.control_packet_num += 1
@@ -253,14 +253,14 @@ class Dsdv:
 
             if self.my_node.mac_protocol.wait_ack_process_finish[key2] == 0:
                 if not self.my_node.mac_protocol.wait_ack_process_dict[key2].triggered:
-                    logger.info('At time: %s (us) ---- wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
+                    logger.info('At time: %s (us) ---- wait_ack process (id: %s)of NODE:%s is interrupted by UAV: %s',
                                  self.simulator.env.now, key2, self.my_node.identifier, src_node_id)
 
                     self.my_node.mac_protocol.wait_ack_process_finish[key2] = 1  # mark it as "finished"
                     self.my_node.mac_protocol.wait_ack_process_dict[key2].interrupt()
 
         elif isinstance(packet, VfPacket):
-            logger.info('At time: %s (us) ---- UAV: %s receives the vf hello msg from node: %s, pkd id is: %s',
+            logger.info('At time: %s (us) ---- NODE: %s receives the vf hello msg from node: %s, pkd id is: %s',
                          self.simulator.env.now, self.my_node.identifier, src_node_id, packet.packet_id)
 
             # update the neighbor table

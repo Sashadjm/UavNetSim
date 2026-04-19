@@ -1,6 +1,8 @@
 import simpy
 import random
 import queue
+from entities.drone import Drone
+from entities.user import User
 from simulator.log import logger
 from routing.dsdv.dsdv import Dsdv
 from mac.csma_ca import CsmaCa
@@ -134,8 +136,8 @@ class NetworkNode:
 
                 self.simulator.metrics.datapacket_generated_num += 1
 
-                logger.info('At time: %s (us) ++++ NODE: %s generates a data packet (id: %s, dst: %s)',
-                            self.env.now, self.identifier, pkd.packet_id, destination.identifier)
+                logger.info('At time: %s (us) ++++ %s: %s generates a data packet (id: %s, dst: %s)',
+                            self.env.now, self.get_type_string(), self.identifier, pkd.packet_id, destination.identifier)
 
                 pkd.waiting_start_time = self.env.now
 
@@ -198,9 +200,9 @@ class NetworkNode:
                                     has_route, final_packet, enquire = self.routing_protocol.next_hop_selection(packet)
 
                                     if has_route:
-                                        logger.info('At time: %s (us) ---- UAV: %s obtain the next hop: %s of data'
+                                        logger.info('At time: %s (us) ---- %s: %s obtain the next hop: %s of data'
                                                     ' packet (id: %s)',
-                                                    self.env.now, self.identifier, packet.next_hop_id, packet.packet_id)
+                                                    self.env.now, self.get_type_string(), self.identifier, packet.next_hop_id, packet.packet_id)
 
                                         # in this case, the "final_packet" is actually the data packet
                                         yield self.env.process(self.packet_coming(final_packet))
@@ -233,23 +235,23 @@ class NetworkNode:
 
         if not self.sleep:
             arrival_time = self.env.now
-            logger.info('At time: %s (us) ---- Packet: %s starts waiting for UAV: %s buffer resource',
-                        arrival_time, pkd.packet_id, self.identifier)
+            logger.info('At time: %s (us) ---- Packet: %s starts waiting for %s: %s buffer resource',
+                        arrival_time, pkd.packet_id, self.get_type_string(), self.identifier)
 
             with self.buffer.request() as request:
                 yield request  # wait to enter to buffer
 
-                logger.info('At time: %s (us) ---- Packet: %s has been added to the buffer of NODES: %s, '
+                logger.info('At time: %s (us) ---- Packet: %s has been added to the buffer of %s: %s, '
                             'waiting time is: %s',
-                            self.env.now, pkd.packet_id, self.identifier, self.env.now - arrival_time)
+                            self.env.now, pkd.packet_id, self.get_type_string(), self.identifier, self.env.now - arrival_time)
 
                 pkd.number_retransmission_attempt[self.identifier] += 1
 
                 if pkd.number_retransmission_attempt[self.identifier] == 1:
                     pkd.time_transmitted_at_last_hop = self.env.now
 
-                logger.info('At time: %s (us) ---- Re-transmission attempts of pkd: %s at NODES: %s is: %s',
-                            self.env.now, pkd.packet_id, self.identifier,
+                logger.info('At time: %s (us) ---- Re-transmission attempts of pkd: %s at %s: %s is: %s',
+                            self.env.now, pkd.packet_id, self.get_type_string(), self.identifier,
                             pkd.number_retransmission_attempt[self.identifier])
 
                 # every time the node initiates a data packet transmission, "mac_process_count" will be increased by 1
@@ -331,8 +333,8 @@ class NetworkNode:
                         if pkd.get_current_ttl() < config.MAX_TTL:
                             sender = all_nodes_send_to_me[which_one][0]
 
-                            logger.info('At time: %s (us) ---- Packet %s from NODE: %s is received by UAV: %s, sinr is: %s',
-                                        self.env.now, pkd.packet_id, sender, self.identifier, max_sinr)
+                            logger.info('At time: %s (us) ---- Packet %s from NODE: %s is received by %s: %s, sinr is: %s',
+                                        self.env.now, pkd.packet_id, sender, self.get_type_string(), self.identifier, max_sinr)
 
                             yield self.env.process(self.routing_protocol.packet_reception(pkd, sender))
                         else:
@@ -408,6 +410,18 @@ class NetworkNode:
                 pass
 
         return flag, all_nodes_send_to_me, time_span, potential_packet
+
+
+    def get_type_string(self):
+        """
+        Returns a string representation of this node's type.
+        """
+        if isinstance(self, Drone):
+            return "UAV"
+        if isinstance(self, User):
+            return "USER"
+        else:
+            return "NODE"
 
 
 

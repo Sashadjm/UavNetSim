@@ -61,7 +61,7 @@ class QMR:
         )
         hello_pkt.transmission_mode = 1
 
-        logger.info('At time: %s (us) ---- UAV: %s has a hello packet to broadcast',
+        logger.info('At time: %s (us) ---- NODE: %s has a hello packet to broadcast',
                     self.simulator.env.now, self.my_drone.identifier)
 
         self.history_packet_recorder.add_sent_hello_packet(hello_pkt)
@@ -197,7 +197,7 @@ class QMR:
 
             if self.my_drone.mac_protocol.wait_ack_process_finish[key2] == 0:
                 if not self.my_drone.mac_protocol.wait_ack_process_dict[key2].triggered:
-                    logger.info('At time: %s, the wait_ack process (id: %s) of UAV: %s is interrupted by UAV: %s',
+                    logger.info('At time: %s, the wait_ack process (id: %s)of NODE:%s is interrupted by UAV: %s',
                                 self.simulator.env.now, key2, self.my_drone.identifier, src_drone_id)
                     self.my_drone.mac_protocol.wait_ack_process_finish[key2] = 1  # marked it as finished
                     self.my_drone.mac_protocol.wait_ack_process_dict[key2].interrupt()

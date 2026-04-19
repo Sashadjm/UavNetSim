@@ -127,7 +127,7 @@ class Grad:
 
             if msg_type == "M_REQUEST":
                 if self.my_drone.identifier is target.identifier:
-                    logger.info('At time: %s (us) ---- UAV: %s receives a REQUEST message from UAV: %s, and REPLY '
+                    logger.info('At time: %s (us) ---- NODE: %s receives a REQUEST message from UAV: %s, and REPLY '
                                 'message should be launched.',
                                 self.simulator.env.now, self.my_drone.identifier, src_drone_id)
 
@@ -156,7 +156,7 @@ class Grad:
                     self.my_drone.transmitting_queue.put(grad_message)
 
                 else:
-                    logger.info('At time: %s (us) ---- UAV: %s receives a REQUEST message from UAV: %s',
+                    logger.info('At time: %s (us) ---- NODE: %s receives a REQUEST message from UAV: %s',
                                 self.simulator.env.now, self.my_drone.identifier, src_drone_id)
 
                     if packet_copy.remaining_value > 0:
@@ -181,7 +181,7 @@ class Grad:
                             if self.cost_table.has_entry(data_packet.dst_drone.identifier):
                                 est_cost = self.cost_table.get_est_cost(data_packet.dst_drone.identifier)
                                 if est_cost <= packet_copy.remaining_value:
-                                    logger.info('At time: %s (us) ---- UAV: %s further forward the data packet',
+                                    logger.info('At time: %s (us) ---- NODE: %s further forward the data packet',
                                                 self.simulator.env.now, self.my_drone.identifier)
 
                                     self.my_drone.transmitting_queue.put(packet_copy)
@@ -194,7 +194,7 @@ class Grad:
 
             elif msg_type == "M_REPLY":
                 if self.my_drone.identifier is packet_copy.target.identifier:
-                    logger.info('At time: %s (us) ---- UAV: %s receives the REPLY message originates from UAV: %s',
+                    logger.info('At time: %s (us) ---- NODE: %s receives the REPLY message originates from UAV: %s',
                                 self.simulator.env.now, self.my_drone.identifier, packet_copy.originator.identifier)
 
                     # this indicates that there is a path to dst_drone
@@ -217,7 +217,7 @@ class Grad:
                         pass
 
         elif isinstance(packet, VfPacket):
-            logger.info('At time: %s (us) ---- UAV: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
+            logger.info('At time: %s (us) ---- NODE: %s receives the vf hello msg from UAV: %s, pkd id is: %s',
                          self.simulator.env.now, self.my_drone.identifier, src_drone_id, packet.packet_id)
 
             # update the neighbor table

@@ -60,7 +60,7 @@ def sinr_calculator(my_node, main_nodes_list, all_transmitting_nodes_list):
         else:
             pass
 
-        logger.info('At time: %s (us) ---- The SINR of main link between UAV (Tx) %s and UAV (Rx) %s is: %s',
+        logger.info('At time: %s (us) ---- The SINR of main link between NODE (Tx) %s and NODE (Rx) %s is: %s',
                     simulator.env.now, main_node_id, receiver.identifier, sinr)
 
         sinr_list.append(sinr)

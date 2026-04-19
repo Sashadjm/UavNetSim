@@ -119,13 +119,13 @@ class Tdma:
 
         transmission_attempt = pkd.number_retransmission_attempt[self.my_drone.identifier]
 
-        logger.info('At time: %s (us) ---- UAV: %s queues packet: %s for TDMA transmission (attempt: %s)',
+        logger.info('At time: %s (us) ---- NODE: %s queues packet: %s for TDMA transmission (attempt: %s)',
                     self.env.now, self.my_drone.identifier, pkd.packet_id, transmission_attempt)
 
         # Wait for the assigned time slot
         time_to_slot = self._get_wait_time()
 
-        logger.info('At time: %s (us) ---- UAV: %s must wait %s us for its time slot',
+        logger.info('At time: %s (us) ---- NODE: %s must wait %s us for its time slot',
                     self.env.now, self.my_drone.identifier, time_to_slot)
 
         yield self.env.timeout(time_to_slot)
@@ -146,7 +146,7 @@ class Tdma:
         with self.channel_states[self.my_drone.identifier].request() as req:
             yield req
 
-            logger.info('At time: %s (us) ---- UAV: %s transmits in its TDMA slot (pkd id: %s)',
+            logger.info('At time: %s (us) ---- NODE: %s transmits in its TDMA slot (pkd id: %s)',
                         self.env.now, self.my_drone.identifier, pkd.packet_id)
 
             pkd.transmitting_start_time = self.env.now
@@ -159,7 +159,7 @@ class Tdma:
                 self.phy.unicast(pkd, next_hop_id)
                 yield self.env.timeout(pkd.packet_length / config.BIT_RATE * 1e6)  # transmission delay
 
-                logger.info('At time: %s (us) ---- UAV: %s starts to wait ACK for packet: %s',
+                logger.info('At time: %s (us) ---- NODE: %s starts to wait ACK for packet: %s',
                             self.env.now, self.my_drone.identifier, pkd.packet_id)
 
                 if self.enable_ack:
@@ -180,7 +180,7 @@ class Tdma:
         # Verify we didn't exceed slot duration
         time_in_slot = (self.env.now % self.frame_duration) % self.slot_duration
         if time_in_slot > self.slot_duration - self.guard_time:
-            logger.warning('At time: %s (us) ---- UAV: %s transmission exceeded slot boundary!',
+            logger.warning('At time: %s (us) ---- NODE: %s transmission exceeded slot boundary!',
                            self.env.now, self.my_drone.identifier)
 
     def wait_ack(self, pkd):
@@ -211,5 +211,5 @@ class Tdma:
 
         except simpy.Interrupt:
             # receive ACK in time
-            logger.info('At time: %s (us) ---- UAV: %s receives the ACK for data packet: %s',
+            logger.info('At time: %s (us) ---- NODE: %s receives the ACK for data packet: %s',
                         self.env.now, self.my_drone.identifier, pkd.packet_id)
