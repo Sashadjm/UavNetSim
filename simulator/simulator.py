@@ -2,8 +2,10 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 from phy.channel import Channel
+import entities
 from entities.drone import Drone
 from entities.user import User
+from entities.antenna import Antenna
 from entities.obstacle import SphericalObstacle, CubeObstacle
 from simulator.metrics import Metrics
 from mobility import start_coords
@@ -23,6 +25,7 @@ class Simulator:
         total_simulation_time: discrete time steps, in nanosecond
         n_drones: number of the drones
         n_users: number of the users
+        n_antennas: number of antennas
         channel_states: a dictionary, used to describe the channel usage
         channel: wireless channel
         metrics: Metrics class, used to record the network performance
@@ -41,6 +44,7 @@ class Simulator:
                  channel_states,
                  n_drones, 
                  n_users,
+                 n_antennas,
                  total_simulation_time=config.SIM_TIME):
 
         self.env = env
@@ -49,7 +53,8 @@ class Simulator:
 
         self.n_drones = n_drones  # total number of drones in the simulation
         self.n_users = n_users  # total number of users in the simulation
-        self.n_nodes = self.n_drones + self.n_users  # total number of nodes in the simulation, including drones and users
+        self.n_antennas = n_antennas
+        self.n_nodes = self.n_drones + self.n_users + self.n_antennas  # total number of nodes in the simulation, including drones and users
         self.channel_states = channel_states
         self.channel = Channel(self.env)
 
@@ -103,7 +108,20 @@ class Simulator:
             self.users.append(user)
             current_id += 1
 
-        self.network_nodes = self.drones + self.users
+        start_position_antenna = start_coords.get_random_start_point_2d(seed,n_antennas)
+
+        self.antennas = []
+        print('Antennas: ', current_id, ' initial location is at: ', start_position_antenna[0])
+        antenna = Antenna(env=env,
+                        node_id=current_id,
+                        coords=start_position_antenna[0],
+                        inbox=self.channel.create_inbox_for_receiver(current_id),
+                        simulator=self)
+
+        self.antennas.append(antenna)
+        current_id += 1
+
+        self.network_nodes = self.drones + self.users + self.antennas
 
         # scatter_plot_with_spherical_obstacles(self)
         scatter_plot(self)

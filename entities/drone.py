@@ -47,7 +47,7 @@ class Drone(NetworkNode):
         
         super().__init__(
                  env,
-                 node_id,
+                 node_id,        # dépend de si branché ou pas mais pas la même énergie que les users donc valeur à changer 
                  coords,
                  inbox,
                  simulator)

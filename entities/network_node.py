@@ -1,8 +1,10 @@
 import simpy
 import random
 import queue
-from entities.drone import Drone
-from entities.user import User
+import entities
+# from entities.drone import Drone
+# from entities.user import User
+# from entities.antenna import Antenna
 from simulator.log import logger
 from routing.dsdv.dsdv import Dsdv
 from mac.csma_ca import CsmaCa
@@ -416,10 +418,12 @@ class NetworkNode:
         """
         Returns a string representation of this node's type.
         """
-        if isinstance(self, Drone):
+        if isinstance(self, entities.drone.Drone):
             return "UAV"
-        if isinstance(self, User):
+        if isinstance(self, entities.user.User):
             return "USER"
+        if isinstance(self, entities.antenna.Antenna):
+            return "ANTENNA"
         else:
             return "NODE"
 

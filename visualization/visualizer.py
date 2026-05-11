@@ -1,4 +1,5 @@
 import os
+from matplotlib.markers import CARETUP
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -10,6 +11,7 @@ from utils import config
 import io
 from entities.drone import Drone
 from entities.user import User
+from entities.antenna import Antenna
 import matplotlib.patheffects as path_effects
 
 # Add 3D arrow class definition that handles arrows in 3D view
@@ -499,13 +501,19 @@ class SimulationVisualizer:
             node = self.simulator.network_nodes[node_id]
             if isinstance(node, Drone):
                 color = "#9a0000"
+                marker = "1"
             # couleur user
             elif isinstance (node, User):
                 color = "#1b4d00"
+                marker = "o"
+            # couleur antenne
+            elif isinstance (node, Antenna):
+                color = "#9014af"
+                marker = CARETUP
             
             # Use smaller marker size for node representation
             ax.scatter(position[0], position[1], position[2], 
-                    color=color, s=150, alpha=0.7, edgecolors='black')
+                    marker=marker, color=color, s=150, alpha=0.7, edgecolors='black')
             
             # Add ID text with outline for better visibility
             # Set high zorder to ensure text appears above other elements
