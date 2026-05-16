@@ -42,3 +42,16 @@ class CubeObstacle(Obstacle):
                     grid[int(x / config.GRID_RESOLUTION),
                          int(y / config.GRID_RESOLUTION),
                          int(z / config.GRID_RESOLUTION)] = self.id
+
+
+class RectangularObstacle(Obstacle):
+    def __init__(self, ext1, ext2, obstacle_id=3):
+        self.lower = [min(ext1[0], ext2[0]), min(ext1[1], ext2[1]), min(ext1[2], ext2[2])]
+        self.upper = [max(ext1[0], ext2[0]), max(ext1[1], ext2[1]), max(ext1[2], ext2[2])]
+        self.id = obstacle_id
+
+    def add_to_grid(self, grid):
+        for x in range(self.lower[0], self.upper[0]):
+            for y in range(self.lower[1], self.upper[1]):
+                for z in range(self.lower[2], self.upper[2]):
+                    grid[x, y, z] = obstacle_id
