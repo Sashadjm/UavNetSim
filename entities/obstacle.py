@@ -51,7 +51,7 @@ class RectangularObstacle(Obstacle):
         self.id = obstacle_id
 
     def add_to_grid(self, grid):
-        for x in range(self.lower[0], self.upper[0]):
-            for y in range(self.lower[1], self.upper[1]):
-                for z in range(self.lower[2], self.upper[2]):
-                    grid[x, y, z] = obstacle_id
+        for x in range(self.lower[0], self.upper[0]+1):
+            for y in range(self.lower[1], self.upper[1]+1):
+                for z in range(self.lower[2], self.upper[2]+1):
+                    grid[x, y, z] = self.id

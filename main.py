@@ -1,6 +1,6 @@
 import simpy
 from utils import config
-from entities.obstacle import SphericalObstacle
+from entities.obstacle import RectangularObstacle
 from simulator.simulator import Simulator
 from visualization.visualizer import SimulationVisualizer
 
@@ -19,10 +19,10 @@ if __name__ == "__main__":
 
     sim = Simulator(seed=2025, env=env)
 
-    print(sim.grid)
+    print(sim.grid.shape)
 
     # Add obstacles
-    sim.add_obstacle(SphericalObstacle([0, 0, 0], 10))
+    sim.add_obstacle(RectangularObstacle([10, 0, 0], [10, 19, 19]))
 
     # Create entities
     for i in range(0, config.NUMBER_OF_DRONES):

@@ -15,7 +15,7 @@ from path_planning.astar import astar
 from utils import config
 from utils.util_function import grid_map
 from allocation.central_controller import CentralController
-from visualization.static_drawing import scatter_plot, scatter_plot_with_obstacles
+from visualization.static_drawing import scatter_plot
 
 def get_drone_speed():
     if config.HETEROGENEOUS:
@@ -85,13 +85,18 @@ class Simulator:
 
         # Create the (for now empty) grid
         self.grid = np.zeros((config.GRID_RESOLUTION, config.GRID_RESOLUTION, config.GRID_RESOLUTION))
+        self.obstacles: list[Obstacle] = []
+        self.obstacle_type = []
 
         print('Seed is: ', self.seed)
 
-        # scatter_plot_with_spherical_obstacles(self)
-
     def add_obstacle(self, obstacle: Obstacle):
         obstacle.add_to_grid(self.grid)
+
+        if obstacle.id not in self.obstacle_type:
+            self.obstacle_type.append(obstacle.id)
+
+        self.obstacles.append(obstacle)
 
     def add_node(self, node: NetworkNode):
         """
@@ -194,6 +199,7 @@ class Simulator:
         self.is_sim_started = True
 
         scatter_plot(self)
+        #scatter_plot_with_obstacles(self, self.grid, [])
 
         for node in self.network_nodes:
             node.start_sim()
