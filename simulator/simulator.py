@@ -1,20 +1,30 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import simpy
+from entities.network_node import NetworkNode
 from phy.channel import Channel
 import entities
 from entities.drone import Drone
 from entities.user import User
 from entities.antenna import Antenna
-from entities.obstacle import SphericalObstacle, CubeObstacle
+from entities.obstacle import Obstacle
 from simulator.metrics import Metrics
-from mobility import start_coords
+from mobility.start_coords import random_2d, random_3d
 from path_planning.astar import astar
 from utils import config
 from utils.util_function import grid_map
 from allocation.central_controller import CentralController
 from visualization.static_drawing import scatter_plot, scatter_plot_with_obstacles
 
+def get_drone_speed():
+    if config.HETEROGENEOUS:
+        return random.randint(5, 60)
+    else:
+        return 10
+
+def get_user_speed():
+    return 0
 
 class Simulator:
     """
@@ -23,6 +33,7 @@ class Simulator:
     Attributes:
         env: simpy environment
         total_simulation_time: discrete time steps, in nanosecond
+        n_nodes: number of network nodes
         n_drones: number of the drones
         n_users: number of the users
         n_antennas: number of antennas
@@ -31,7 +42,9 @@ class Simulator:
         metrics: Metrics class, used to record the network performance
         drones: a list, contains all drone instances
         users: a list, contains all user instances
+        antennas: a list, contains all antenna instances
         network_nodes: a list, contains all network nodes (i.e. drones + users)
+        grid: obstacles in the environment
 
     Author: Zihao Zhou, eezihaozhou@gmail.com
     Created at: 2024/1/11
@@ -41,90 +54,149 @@ class Simulator:
     def __init__(self,
                  seed,
                  env,
-                 channel_states,
-                 n_drones, 
-                 n_users,
-                 n_antennas,
                  total_simulation_time=config.SIM_TIME):
 
         self.env = env
         self.seed = seed
         self.total_simulation_time = total_simulation_time  # total simulation time (ns)
 
-        self.n_drones = n_drones  # total number of drones in the simulation
-        self.n_users = n_users  # total number of users in the simulation
-        self.n_antennas = n_antennas
-        self.n_nodes = self.n_drones + self.n_users + self.n_antennas  # total number of nodes in the simulation, including drones and users
-        self.channel_states = channel_states
+        self.channel_states = {}
         self.channel = Channel(self.env)
 
         self.metrics = Metrics(self)  # use to record the network performance
 
+        # Whether we started the simulation or not
+        self.is_sim_started = False
+
         # NOTE: if distributed optimization is adopted, remember to comment this to speed up simulation
         # self.central_controller = CentralController(self)
 
-        start_position = start_coords.get_random_start_point_3d(seed, n_drones)
-        # start_position = start_coords.get_customized_start_point_3d()
+        self.n_drones = 0
+        self.n_users = 0
+        self.n_antennas = 0
 
-        current_id = 0
+        self.n_nodes = 0
 
-        self.drones = []
+        self.drones: list[Drone] = []
+        self.users: list[User] = []
+        self.antennas: list[Antenna] = []
+
+        self.network_nodes: list[NetworkNode] = []
+
+        # Create the (for now empty) grid
+        self.grid = np.zeros((config.GRID_RESOLUTION, config.GRID_RESOLUTION, config.GRID_RESOLUTION))
+
         print('Seed is: ', self.seed)
-        for i in range(n_drones):
-            if config.HETEROGENEOUS:
-                speed = random.randint(5, 60)
-            else:
-                speed = 10
-
-            print('UAV: ', current_id, ' initial location is at: ', start_position[i], ' speed is: ', speed)
-            drone = Drone(env=env,
-                          node_id=current_id,
-                          coords=start_position[i],
-                          speed=speed,
-                          inbox=self.channel.create_inbox_for_receiver(current_id),
-                          simulator=self)
-
-            self.drones.append(drone)
-            current_id += 1
-
-        start_position_user = start_coords.get_random_start_point_2d(seed,n_users)
-        # start_position = start_coords.get_customized_start_point_3d()
-
-        self.users = []
-        for i in range(n_users):
-            if config.HETEROGENEOUS:
-                speed = random.randint(5, 60)
-            else:
-                speed = 10
-
-            print('User: ', current_id, ' initial location is at: ', start_position_user[i], ' speed is: ', speed)
-            user = User(env=env,
-                          node_id=current_id,
-                          coords=start_position_user[i],
-                          speed=speed,
-                          inbox=self.channel.create_inbox_for_receiver(current_id),
-                          simulator=self)
-
-            self.users.append(user)
-            current_id += 1
-
-        start_position_antenna = start_coords.get_random_start_point_2d(seed,n_antennas)
-
-        self.antennas = []
-        print('Antennas: ', current_id, ' initial location is at: ', start_position_antenna[0])
-        antenna = Antenna(env=env,
-                        node_id=current_id,
-                        coords=start_position_antenna[0],
-                        inbox=self.channel.create_inbox_for_receiver(current_id),
-                        simulator=self)
-
-        self.antennas.append(antenna)
-        current_id += 1
-
-        self.network_nodes = self.drones + self.users + self.antennas
 
         # scatter_plot_with_spherical_obstacles(self)
+
+    def add_obstacle(self, obstacle: Obstacle):
+        obstacle.add_to_grid(self.grid)
+
+    def add_node(self, node: NetworkNode):
+        """
+        Add an already built node to the nodes array
+        """
+        self.channel_states[self.n_nodes] = simpy.Resource(self.env, capacity=1)
+        self.network_nodes.append(node)
+        self.n_nodes += 1
+
+    def add_drone(self, coords=None, speed=None) -> Drone:
+        """
+        Construct and add a drone to the simulation
+
+        Keyword arguments:
+        coords -- Start position of the drone. Default to a random 3D value
+        speed -- Speed of the drone. Default based on config.HETEROGENEOUS
+        """
+        if coords is None:
+            coords = random_3d()
+        if speed is None:
+            speed = get_drone_speed()
+
+        drone = Drone(
+            self.env,
+            self.n_nodes,
+            coords,
+            speed,
+            self.channel.create_inbox_for_receiver(self.n_nodes),
+            self
+        )
+
+        print(f"Creating UAV {self.n_nodes} at position {coords}")
+
+        self.add_node(drone)
+        self.drones.append(drone)
+        self.n_drones += 1
+
+        return drone
+
+    def add_user(self, coords=None, speed=None) -> User:
+        """
+        Construct and add a user to the simulation
+
+        Keyword arguments:
+        coords -- Start position of the user. Default to a random 2D value
+        speed -- Speed of the user. Default 0
+        """
+        if coords is None:
+            coords = random_2d()
+        if speed is None:
+            speed = get_user_speed()
+
+        user = User(
+            self.env,
+            self.n_nodes,
+            coords,
+            speed,
+            self.channel.create_inbox_for_receiver(self.n_nodes),
+            self
+        )
+
+        print(f"Creating USER {self.n_nodes} at position {coords}")
+
+        self.add_node(user)
+        self.users.append(user)
+        self.n_users += 1
+
+        return user
+
+    def add_antenna(self, coords=None) -> Antenna:
+        """
+        Construct and add an antenna to the simulation.
+
+        Keyword arguments:
+        coords -- Start position of the antenna. Default to a random 2D value
+        """
+        if coords is None:
+            coords = random_2d()
+
+        antenna = Antenna(
+            self.env,
+            self.n_nodes,
+            coords,
+            self.channel.create_inbox_for_receiver(self.n_nodes),
+            self
+        )
+
+        print(f"Creating ANTENNA {self.n_nodes} at position {coords}")
+
+        self.add_node(antenna)
+        self.antennas.append(antenna)
+        self.n_antennas += 1
+
+        return antenna
+
+    def start_sim(self):
+        """
+        Start the simulation
+        """
+        self.is_sim_started = True
+
         scatter_plot(self)
+
+        for node in self.network_nodes:
+            node.start_sim()
 
         self.env.process(self.show_performance())
         self.env.process(self.show_time())

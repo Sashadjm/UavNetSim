@@ -1,7 +1,11 @@
 from utils.util_function import euclidean_distance_3d
 from utils import config
 
-class SphericalObstacle:
+class Obstacle:
+    def add_to_grid(self, grid):
+        pass
+
+class SphericalObstacle(Obstacle):
     def __init__(self, center, radius, obstacle_id=1):
         self.center = center  # in meter
         self.radius = radius  # in meter
@@ -20,7 +24,7 @@ class SphericalObstacle:
                              int(z / config.GRID_RESOLUTION)] = self.id
 
 
-class CubeObstacle:
+class CubeObstacle(Obstacle):
     def __init__(self, center, length, width, height, obstacle_id=2):
         self.center = center
         self.length = length

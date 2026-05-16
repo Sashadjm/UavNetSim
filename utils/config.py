@@ -68,7 +68,7 @@ HELLO_PACKET_LENGTH = IP_HEADER_LENGTH + MAC_HEADER_LENGTH + PHY_HEADER_LENGTH +
 # define the range of "id" of different types of packets
 """
 |--------------|--------------|--------------|--------------|--------------|
-0            10000          20000          30000          40000    
+0            10000          20000          30000          40000
 |   data pkt   |   hello pkt  |    ack pkt   |    vf pkt    |   grad msg   |
 """
 GL_ID_DATA_PACKET = 0

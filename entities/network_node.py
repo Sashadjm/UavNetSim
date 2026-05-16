@@ -1,19 +1,23 @@
-import simpy
-import random
 import queue
+import random
+
+import simpy
+
 import entities
+from allocation.channel_assignment import ChannelAssigner
+from energy.energy_model import EnergyModel
+from entities.packet import DataPacket
+from mac.csma_ca import CsmaCa
+from phy.large_scale_fading import sinr_calculator
+from routing.dsdv.dsdv import Dsdv
+
 # from entities.drone import Drone
 # from entities.user import User
 # from entities.antenna import Antenna
 from simulator.log import logger
-from routing.dsdv.dsdv import Dsdv
-from mac.csma_ca import CsmaCa
-from energy.energy_model import EnergyModel
-from entities.packet import DataPacket
-from allocation.channel_assignment import ChannelAssigner
 from utils import config
 from utils.util_function import has_intersection
-from phy.large_scale_fading import sinr_calculator
+
 
 class NetworkNode:
     """
@@ -50,12 +54,8 @@ class NetworkNode:
         sleep: if the drone is in a "sleep" state, it cannot perform packet sending and receiving operations
         channel_assigner: used to assign sub-channel for transmitting
     """
-    def __init__(self,
-                 env,
-                 node_id,
-                 coords,
-                 inbox,
-                 simulator):
+
+    def __init__(self, env, node_id, coords, inbox, simulator):
         self.simulator = simulator
         self.env = env
         self.identifier = node_id
@@ -85,20 +85,24 @@ class NetworkNode:
 
         self.channel_assigner = ChannelAssigner(self.simulator, self)
 
+    def start_sim(self):
+        """
+        Start this node simulation
+        """
         self.env.process(self.generate_data_packet())
         self.env.process(self.feed_packet())
         self.env.process(self.receive())
 
-    def generate_data_packet(self, traffic_pattern='Poisson'):
+    def generate_data_packet(self, traffic_pattern="Poisson"):
 
         while True:
             if not self.sleep:
-                if traffic_pattern == 'Uniform':
+                if traffic_pattern == "Uniform":
                     # the node generates a data packet every 0.5s with jitter
                     yield self.env.timeout(self.rng_node.randint(500000, 505000))
-                elif traffic_pattern == 'Poisson':
+                elif traffic_pattern == "Poisson":
                     """
-                    The process of generating data packets by nodes follows Poisson distribution, thus the generation 
+                    The process of generating data packets by nodes follows Poisson distribution, thus the generation
                     interval of data packets follows exponential distribution
                     """
 
@@ -111,35 +115,54 @@ class NetworkNode:
                 all_candidate_list = [i for i in range(self.simulator.n_nodes)]
                 all_candidate_list.remove(self.identifier)
                 dst_id = self.rng_node.choice(all_candidate_list)
-                destination = self.simulator.network_nodes[dst_id]  # obtain the destination drone
+                destination = self.simulator.network_nodes[
+                    dst_id
+                ]  # obtain the destination drone
 
                 # data packet length
                 # rien à vraiment changer car on peut garder la même logique pour les différents agents (différence entre data ou message ou quoi)
                 if config.VARIABLE_PAYLOAD_LENGTH:
-                    fluctuation = self.rng_node.randint(-config.MAXIMUM_PAYLOAD_VARIATION, config.MAXIMUM_PAYLOAD_VARIATION)
+                    fluctuation = self.rng_node.randint(
+                        -config.MAXIMUM_PAYLOAD_VARIATION,
+                        config.MAXIMUM_PAYLOAD_VARIATION,
+                    )
                     payload_length = config.AVERAGE_PAYLOAD_LENGTH + fluctuation
                 else:
                     payload_length = config.AVERAGE_PAYLOAD_LENGTH  # in bit, 1024 bytes
 
-                data_packet_length = (config.IP_HEADER_LENGTH + config.MAC_HEADER_LENGTH +
-                                    config.PHY_HEADER_LENGTH + payload_length)
+                data_packet_length = (
+                    config.IP_HEADER_LENGTH
+                    + config.MAC_HEADER_LENGTH
+                    + config.PHY_HEADER_LENGTH
+                    + payload_length
+                )
 
                 # channel assignment
                 channel_id = self.channel_assigner.channel_assign()
 
-                pkd = DataPacket(self,
-                                dst_node=destination,
-                                creation_time=self.env.now,
-                                data_packet_id=config.GL_ID_DATA_PACKET,
-                                data_packet_length=data_packet_length,
-                                simulator=self.simulator,
-                                channel_id=channel_id)
-                pkd.transmission_mode = 0  # the default transmission mode of data packet is "unicast" (0)
+                pkd = DataPacket(
+                    self,
+                    dst_node=destination,
+                    creation_time=self.env.now,
+                    data_packet_id=config.GL_ID_DATA_PACKET,
+                    data_packet_length=data_packet_length,
+                    simulator=self.simulator,
+                    channel_id=channel_id,
+                )
+                pkd.transmission_mode = (
+                    0  # the default transmission mode of data packet is "unicast" (0)
+                )
 
                 self.simulator.metrics.datapacket_generated_num += 1
 
-                logger.info('At time: %s (us) ++++ %s: %s generates a data packet (id: %s, dst: %s)',
-                            self.env.now, self.get_type_string(), self.identifier, pkd.packet_id, destination.identifier)
+                logger.info(
+                    "At time: %s (us) ++++ %s: %s generates a data packet (id: %s, dst: %s)",
+                    self.env.now,
+                    self.get_type_string(),
+                    self.identifier,
+                    pkd.packet_id,
+                    destination.identifier,
+                )
 
                 pkd.waiting_start_time = self.env.now
 
@@ -162,7 +185,9 @@ class NetworkNode:
                 flag = False  # there is currently no waiting process for ACK
             else:
                 # get the latest process status
-                final_indicator = list(self.mac_protocol.wait_ack_process_finish.items())[-1]
+                final_indicator = list(
+                    self.mac_protocol.wait_ack_process_finish.items()
+                )[-1]
 
                 if final_indicator[1] == 0:
                     flag = True  # indicates that the node is still waiting
@@ -192,29 +217,50 @@ class NetworkNode:
 
                 if not self.blocking():
                     if not self.transmitting_queue.empty():
-                        packet = self.transmitting_queue.get()  # get the packet at the head of the queue
+                        packet = (
+                            self.transmitting_queue.get()
+                        )  # get the packet at the head of the queue
 
-                        if self.env.now < packet.creation_time + packet.deadline:  # this packet has not expired
+                        if (
+                            self.env.now < packet.creation_time + packet.deadline
+                        ):  # this packet has not expired
                             if isinstance(packet, DataPacket):
-                                if packet.number_retransmission_attempt[self.identifier] < config.MAX_RETRANSMISSION_ATTEMPT:
+                                if (
+                                    packet.number_retransmission_attempt[
+                                        self.identifier
+                                    ]
+                                    < config.MAX_RETRANSMISSION_ATTEMPT
+                                ):
                                     # it should be noted that "final_packet" may be the data packet itself or a control
                                     # packet, depending on whether the routing protocol can find an appropriate next hop
-                                    has_route, final_packet, enquire = self.routing_protocol.next_hop_selection(packet)
+                                    has_route, final_packet, enquire = (
+                                        self.routing_protocol.next_hop_selection(packet)
+                                    )
 
                                     if has_route:
-                                        logger.info('At time: %s (us) ---- %s: %s obtain the next hop: %s of data'
-                                                    ' packet (id: %s)',
-                                                    self.env.now, self.get_type_string(), self.identifier, packet.next_hop_id, packet.packet_id)
+                                        logger.info(
+                                            "At time: %s (us) ---- %s: %s obtain the next hop: %s of data"
+                                            " packet (id: %s)",
+                                            self.env.now,
+                                            self.get_type_string(),
+                                            self.identifier,
+                                            packet.next_hop_id,
+                                            packet.packet_id,
+                                        )
 
                                         # in this case, the "final_packet" is actually the data packet
-                                        yield self.env.process(self.packet_coming(final_packet))
+                                        yield self.env.process(
+                                            self.packet_coming(final_packet)
+                                        )
                                     else:
                                         self.waiting_list.append(packet)
                                         self.remove_from_queue(packet)
 
                                         if enquire:
                                             # in this case, the "final_packet" is actually the control packet
-                                            yield self.env.process(self.packet_coming(final_packet))
+                                            yield self.env.process(
+                                                self.packet_coming(final_packet)
+                                            )
 
                             else:  # control packet but not ack
                                 yield self.env.process(self.packet_coming(packet))
@@ -237,29 +283,47 @@ class NetworkNode:
 
         if not self.sleep:
             arrival_time = self.env.now
-            logger.info('At time: %s (us) ---- Packet: %s starts waiting for %s: %s buffer resource',
-                        arrival_time, pkd.packet_id, self.get_type_string(), self.identifier)
+            logger.info(
+                "At time: %s (us) ---- Packet: %s starts waiting for %s: %s buffer resource",
+                arrival_time,
+                pkd.packet_id,
+                self.get_type_string(),
+                self.identifier,
+            )
 
             with self.buffer.request() as request:
                 yield request  # wait to enter to buffer
 
-                logger.info('At time: %s (us) ---- Packet: %s has been added to the buffer of %s: %s, '
-                            'waiting time is: %s',
-                            self.env.now, pkd.packet_id, self.get_type_string(), self.identifier, self.env.now - arrival_time)
+                logger.info(
+                    "At time: %s (us) ---- Packet: %s has been added to the buffer of %s: %s, "
+                    "waiting time is: %s",
+                    self.env.now,
+                    pkd.packet_id,
+                    self.get_type_string(),
+                    self.identifier,
+                    self.env.now - arrival_time,
+                )
 
                 pkd.number_retransmission_attempt[self.identifier] += 1
 
                 if pkd.number_retransmission_attempt[self.identifier] == 1:
                     pkd.time_transmitted_at_last_hop = self.env.now
 
-                logger.info('At time: %s (us) ---- Re-transmission attempts of pkd: %s at %s: %s is: %s',
-                            self.env.now, pkd.packet_id, self.get_type_string(), self.identifier,
-                            pkd.number_retransmission_attempt[self.identifier])
+                logger.info(
+                    "At time: %s (us) ---- Re-transmission attempts of pkd: %s at %s: %s is: %s",
+                    self.env.now,
+                    pkd.packet_id,
+                    self.get_type_string(),
+                    self.identifier,
+                    pkd.number_retransmission_attempt[self.identifier],
+                )
 
                 # every time the node initiates a data packet transmission, "mac_process_count" will be increased by 1
                 self.mac_process_count += 1
 
-                key=''.join(['mac_send', str(self.identifier), '_', str(pkd.packet_id)])
+                key = "".join(
+                    ["mac_send", str(self.identifier), "_", str(pkd.packet_id)]
+                )
 
                 mac_process = self.env.process(self.mac_protocol.mac_send(pkd))
                 self.mac_process_dict[key] = mac_process
@@ -313,17 +377,28 @@ class NetworkNode:
                             insertion_time = item[1]
                             transmitter = item[2]
                             channel_used = item[4]
-                            transmitting_time = packet.packet_length / config.BIT_RATE * 1e6
-                            interval = [insertion_time, insertion_time + transmitting_time]
+                            transmitting_time = (
+                                packet.packet_length / config.BIT_RATE * 1e6
+                            )
+                            interval = [
+                                insertion_time,
+                                insertion_time + transmitting_time,
+                            ]
 
                             for interval2 in time_span:
                                 if has_intersection(interval, interval2):
-                                    transmitting_node_list.append([transmitter, channel_used])
+                                    transmitting_node_list.append(
+                                        [transmitter, channel_used]
+                                    )
 
                     # remove duplicates
-                    transmitting_node_list = [list(x) for x in {tuple(i) for i in transmitting_node_list}]
+                    transmitting_node_list = [
+                        list(x) for x in {tuple(i) for i in transmitting_node_list}
+                    ]
 
-                    sinr_list = sinr_calculator(self, all_nodes_send_to_me, transmitting_node_list)
+                    sinr_list = sinr_calculator(
+                        self, all_nodes_send_to_me, transmitting_node_list
+                    )
 
                     # receive the packet of the transmitting node corresponding to the maximum SINR
                     max_sinr = max(sinr_list)
@@ -335,21 +410,33 @@ class NetworkNode:
                         if pkd.get_current_ttl() < config.MAX_TTL:
                             sender = all_nodes_send_to_me[which_one][0]
 
-                            logger.info('At time: %s (us) ---- Packet %s from NODE: %s is received by %s: %s, sinr is: %s',
-                                        self.env.now, pkd.packet_id, sender, self.get_type_string(), self.identifier, max_sinr)
+                            logger.info(
+                                "At time: %s (us) ---- Packet %s from NODE: %s is received by %s: %s, sinr is: %s",
+                                self.env.now,
+                                pkd.packet_id,
+                                sender,
+                                self.get_type_string(),
+                                self.identifier,
+                                max_sinr,
+                            )
 
-                            yield self.env.process(self.routing_protocol.packet_reception(pkd, sender))
+                            yield self.env.process(
+                                self.routing_protocol.packet_reception(pkd, sender)
+                            )
                         else:
-                            logger.info('At time: %s (us) ---- Packet %s is dropped due to exceeding max TTL',
-                                        self.env.now, pkd.packet_id)
+                            logger.info(
+                                "At time: %s (us) ---- Packet %s is dropped due to exceeding max TTL",
+                                self.env.now,
+                                pkd.packet_id,
+                            )
                     else:  # sinr is lower than threshold
                         pass
 
                 yield self.env.timeout(5)
             else:
                 break
-    
-    #No specific changes because its for both users and drones
+
+    # No specific changes because its for both users and drones
     def update_inbox(self):
         """
         Clear the packets that have been processed.
@@ -361,15 +448,25 @@ class NetworkNode:
         """
 
         if config.VARIABLE_PAYLOAD_LENGTH:
-            max_transmission_time = ((config.AVERAGE_PAYLOAD_LENGTH + config.MAXIMUM_PAYLOAD_VARIATION)
-                                     / config.BIT_RATE) * 1e6  # for a single data packet
+            max_transmission_time = (
+                (config.AVERAGE_PAYLOAD_LENGTH + config.MAXIMUM_PAYLOAD_VARIATION)
+                / config.BIT_RATE
+            ) * 1e6  # for a single data packet
         else:
-            max_transmission_time = (config.AVERAGE_PAYLOAD_LENGTH / config.BIT_RATE) * 1e6  # for a single data packet
+            max_transmission_time = (
+                config.AVERAGE_PAYLOAD_LENGTH / config.BIT_RATE
+            ) * 1e6  # for a single data packet
 
         for item in self.inbox:
-            insertion_time = item[1]  # the moment that this packet begins to be sent to the channel
-            received = item[3]  # used to indicate if this packet has been processed (1: processed, 0: unprocessed)
-            if insertion_time + 2 * max_transmission_time < self.env.now:  # no impact on the current packet
+            insertion_time = item[
+                1
+            ]  # the moment that this packet begins to be sent to the channel
+            received = item[
+                3
+            ]  # used to indicate if this packet has been processed (1: processed, 0: unprocessed)
+            if (
+                insertion_time + 2 * max_transmission_time < self.env.now
+            ):  # no impact on the current packet
                 if received:
                     self.inbox.remove(item)
 
@@ -395,15 +492,23 @@ class NetworkNode:
             insertion_time = item[1]  # transmission start time
             transmitter = item[2]
             processed = item[3]  # indicate if this packet has been processed
-            channel_used = item[4]  # indicate the sub-channel that used to transmit this packet
+            channel_used = item[
+                4
+            ]  # indicate the sub-channel that used to transmit this packet
 
-            transmitting_time = packet.packet_length / config.BIT_RATE * 1e6  # expected transmission time
+            transmitting_time = (
+                packet.packet_length / config.BIT_RATE * 1e6
+            )  # expected transmission time
 
             if not processed:  # this packet has not been processed yet
-                if self.env.now >= insertion_time + transmitting_time:  # it has been transmitted completely
+                if (
+                    self.env.now >= insertion_time + transmitting_time
+                ):  # it has been transmitted completely
                     flag = 1
                     all_nodes_send_to_me.append([transmitter, channel_used])
-                    time_span.append([insertion_time, insertion_time + transmitting_time])
+                    time_span.append(
+                        [insertion_time, insertion_time + transmitting_time]
+                    )
                     potential_packet.append(packet)
                     item[3] = 1
                 else:
@@ -412,7 +517,6 @@ class NetworkNode:
                 pass
 
         return flag, all_nodes_send_to_me, time_span, potential_packet
-
 
     def get_type_string(self):
         """
@@ -427,9 +531,7 @@ class NetworkNode:
         else:
             return "NODE"
 
-
-
-    # TODO 
+    # TODO
     # - Copier les fonctions relatives au réseau de drone.py dans cette classe
     # - Modifier les fonctions de drone.py pour qu'elles puissent être utilisées dans cette classe
     # - Modifier les implémentations dans /phy, /mac, /routing, etc. pour qu'elles fonctionnent avec

@@ -1,7 +1,16 @@
-import math
 import random
 from utils import config
-from simulator import simulator
+
+def random_3d() -> tuple[int, int, int]:
+    position_x = random.uniform(1, config.MAP_LENGTH - 1)
+    position_y = random.uniform(1, config.MAP_WIDTH - 1)
+    position_z = random.uniform(1, config.MAP_HEIGHT - 1)
+    return (position_x, position_y, position_z)
+
+def random_2d() -> tuple[int, int, int]:
+    position_x = random.uniform(1, config.MAP_LENGTH - 1)
+    position_y = random.uniform(1, config.MAP_WIDTH - 1)
+    return (position_x, position_y, 0)
 
 def get_random_start_point_2d(sim_seed, n_points):
     res = get_random_start_point_3d(sim_seed, n_points)
@@ -13,11 +22,7 @@ def get_random_start_point_3d(sim_seed, n_points):
     start_positions = []
     for i in range (n_points) :
         random.seed(sim_seed + i)
-        position_x = random.uniform(1, config.MAP_LENGTH - 1)
-        position_y = random.uniform(1, config.MAP_WIDTH - 1)
-        position_z = random.uniform(1, config.MAP_HEIGHT - 1)
-
-        start_positions.append(tuple([position_x, position_y, position_z]))
+        start_positions.append(random_3d())
 
     return start_positions
 
