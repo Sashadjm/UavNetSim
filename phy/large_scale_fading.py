@@ -2,6 +2,7 @@ import math
 from simulator.log import logger
 from utils import config
 from utils.util_function import euclidean_distance_3d, euclidean_distance_2d
+import numpy as np
 
 
 def sinr_calculator(my_node, main_nodes_list, all_transmitting_nodes_list):
@@ -66,6 +67,74 @@ def sinr_calculator(my_node, main_nodes_list, all_transmitting_nodes_list):
         sinr_list.append(sinr)
 
     return sinr_list
+
+def distance(a: np.ndarray, b: np.ndarray) -> float:
+    """
+    Compute the Euclidean distance between two points*.
+
+    Args:
+        a (np.array): The first point.
+        b (np.array): The second point.
+
+    Returns:
+        float: The Euclidean distance between the two points.
+    """
+
+    return float(np.linalg.norm(a - b))
+
+
+def _distance_in_one_obstacle(
+    a: np.ndarray, b: np.ndarray, obs_min: np.ndarray, obs_max: np.ndarray
+) -> float:
+    """
+    Compute the distance between a line segment and a rectangular obstacle.
+
+    This function uses the `distance` function to calculate the distances.
+    The end point can be inside the obstacle, but not the start point.
+
+    Args:
+        a (np.array): The start point of the line segment.
+        b (np.array): The end point of the line segment.
+        obs_min (np.array): The minimum corner of the obstacle.
+        obs_max (np.array): The maximum corner of the obstacle.
+
+    Returns:
+        float: The distance between the line segment and the obstacle.
+    """
+
+    direction = b - a
+    tmin, tmax = 0.0, 1.0
+
+    # Check for each axis
+    for i in range(3):
+
+        # If the line is not parallel to the axis
+        if direction[i] != 0:
+            # Calculate intersection points with the planes of the obstacle
+            t1 = (obs_min[i] - a[i]) / direction[i]
+            t2 = (obs_max[i] - a[i]) / direction[i]
+
+            # Update the interval parameter
+            tmin = max(tmin, min(t1, t2))
+            tmax = min(tmax, max(t1, t2))
+
+        # If the line is parallel to the axis and outside the obstacle
+        elif a[i] < obs_min[i] or a[i] > obs_max[i]:
+            return 0.0
+
+    # If the line segment intersects the obstacle
+    if tmin <= tmax:
+        # Calculate the entry and exit points of the line segment
+        entry_point = a + tmin * direction
+        exit_point = a + tmax * direction
+        if np.all(obs_min <= b) and np.all(b <= obs_max):
+            exit_point = b
+
+        # Return the distance between the entry and exit points divide by 5 because obstacles are
+        # buildings and buildings are not completely solid
+        return distance(entry_point, exit_point) / 5.0
+
+    return 0.0
 
 
 def general_path_loss(receiver, transmitter):
