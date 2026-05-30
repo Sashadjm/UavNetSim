@@ -55,6 +55,7 @@ MAC_HEADER_LENGTH = 14 * 8  # header length in mac layer, 14 byte
 
 # ---------------------- physical layer -------------------------- #
 PATH_LOSS_EXPONENT = 2  # for large-scale fading
+PATH_LOSS_OBSTACLE_EXPONENT = 4 # for large-scale fading in obstacles
 PLCP_PREAMBLE = 128 + 16  # including synchronization and SFD (start frame delimiter)
 PLCP_HEADER = 8 + 8 + 16 + 16  # including signal, service, length and HEC (header error check)
 PHY_HEADER_LENGTH = PLCP_PREAMBLE + PLCP_HEADER  # header length in physical layer, PLCP preamble + PLCP header

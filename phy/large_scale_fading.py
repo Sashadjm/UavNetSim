@@ -136,6 +136,114 @@ def _distance_in_one_obstacle(
 
     return 0.0
 
+def distance_in_obstacles(
+    a: np.ndarray, b: np.ndarray, obstacles: list[tuple[np.ndarray, np.ndarray]]
+) -> float:
+    """
+    Compute the distance between a line segment and all obstacles.
+
+    Args:
+        a (np.array): The start point of the line segment.
+        b (np.array): The end point of the line segment.
+        obstacles (List[Tuple[np.array, np.array]]):
+            The list of obstacles, each represented by a tuple of minimum and maximum corners.
+
+    Returns:
+        float: The total distance between the line segment and all obstacles.
+    """
+
+    total_distance = 0.0
+    for obs in obstacles:
+        total_distance += _distance_in_one_obstacle(a, b, obs[0], obs[1])
+    return total_distance
+
+
+
+def grid_cell_to_obstacle(cell_x: int, cell_y: int, cell_z: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Converts a cell in the grid, defined by its coordinates (ex: cell (1, 2, 0)) to
+    a minimum-maximum defined rectangle (ex: [(10, 20, 0), (20, 30, 10)]).
+    The "minimum" is the corner of the grid cell which has the three lowest components.
+    The "maximum" is the corner of the grid cell which has the three highest components.
+
+    Args:
+        cell_x (int): X coordinate of the cell.
+        cell_y (int): Y coordinate of the cell.
+        cell_z (int): Z coordinate of the cell.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: A tuple (minimum, maximum) representing the cell as a rectangle.
+    """
+
+    # Compute the size of one cell
+    cell_length = config.MAP_LENGTH / config.GRID_RESOLUTION
+    cell_width = config.MAP_WIDTH / config.GRID_RESOLUTION
+    cell_height = config.MAP_HEIGHT / config.GRID_RESOLUTION
+
+    min = np.asarray([cell_x * cell_length, cell_y * cell_width, cell_z * cell_height])
+    max = min + np.asarray([cell_length, cell_width, cell_height])
+
+    return (min, max)
+
+
+def grid_to_obstacles(grid: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:
+    """
+    The world is divided by a grid of size config.GRID_RESOLUTION ** 3.
+    Cells of this grid can either be air or rectangular obstacles filling the whole grid.
+    We want to convert 
+    """
+    res = []
+    for x in range(0, config.GRID_RESOLUTION):
+        for y in range(0, config.GRID_RESOLUTION):
+            for z in range(0, config.GRID_RESOLUTION):
+                if grid[x, y, z] != 0:
+                    res.append(grid_cell_to_obstacle(x, y, z))
+
+    return res
+
+
+def _path_loss_obs(distance_obs: float) -> float:
+    """
+    Calculate the path loss in an obstacle for an observed distance.
+
+    Args:
+        distance_obs (float): The observed distance in meters.
+
+    Returns:
+        float: The calculated path loss in decibels (dB).
+    """
+
+    if distance_obs <= 0:
+        return 0.0
+
+    return 10.0 * config.PATH_LOSS_OBSTACLE_EXPONENT * np.log10(distance_obs)
+
+
+def _db_to_linear(db_path_loss: float) -> float:
+    """
+    Convert a logarithmic path loss to a linear path loss.
+    The formula is : linear_path_loss = 10 ^ (db_path_loss / 10)
+    """
+    return 10 ** (db_path_loss / 10)
+
+
+def path_loss_obstacles(receiver, transmitter) -> float:
+    """
+    Compute the path loss due to obstacles.
+
+    Parameters:
+        receiver: the node that receives the packet
+        transmitter: the node that sends the packet
+
+    Returns:
+        path loss due to obstacles
+    """
+    start = np.asarray(transmitter.coords)
+    end = np.asarray(receiver.coords)
+    obstacles = grid_to_obstacles(transmitter.simulator.grid)
+    distance_obs = distance_in_obstacles(start, end, obstacles) 
+    return _db_to_linear(_path_loss_obs(distance_obs))
+
 
 def general_path_loss(receiver, transmitter):
     """
@@ -155,12 +263,15 @@ def general_path_loss(receiver, transmitter):
 
     c = config.LIGHT_SPEED
     fc = config.CARRIER_FREQUENCY
-    alpha = 2  # path loss exponent
+    alpha = config.PATH_LOSS_EXPONENT
 
     distance = euclidean_distance_3d(receiver.coords, transmitter.coords)
 
     if distance != 0:
         path_loss = (c / (4 * math.pi * fc * distance)) ** alpha
+
+        obs_path_loss = path_loss_obstacles(receiver, transmitter)
+        path_loss /= obs_path_loss
     else:
         path_loss = 1
 
@@ -186,7 +297,7 @@ def probabilistic_los_path_loss(receiver, transmitter):
 
     c = config.LIGHT_SPEED
     fc = config.CARRIER_FREQUENCY
-    alpha = 2  # path loss exponent
+    alpha = config.PATH_LOSS_EXPONENT
     eta_los = 0.1
     eta_nlos = 21
     a = 4.88
@@ -209,6 +320,8 @@ def probabilistic_los_path_loss(receiver, transmitter):
         path_loss_nlos = 1
 
     path_loss = los_prob * path_loss_los + nlos_prob * path_loss_nlos
+    obs_path_loss = path_loss_obstacles(receiver, transmitter)
+    path_loss /= obs_path_loss
     return path_loss
 
 
