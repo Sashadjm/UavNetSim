@@ -330,9 +330,10 @@ class NetworkNode:
                             sender = all_nodes_send_to_me[which_one][0]
 
                             logger.info(
-                                "At time: %s (us) ---- Packet %s from NODE: %s is received by %s: %s, sinr is: %s",
+                                "At time: %s (us) ---- Packet %s from %s: %s is received by %s: %s, sinr is: %s",
                                 self.env.now,
                                 pkd.packet_id,
+                                sender.get_type_string(),
                                 sender,
                                 self.get_type_string(),
                                 self.identifier,

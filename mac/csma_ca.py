@@ -71,8 +71,8 @@ class CsmaCa:
         backoff = self.rng_mac.randint(0, contention_window - 1) * config.SLOT_DURATION  # random backoff, in us
         to_wait = config.DIFS_DURATION + backoff
 
-        logger.info('At time: %s (us) ---- NODE: %s sets its back-off counter as: %s',
-                    self.env.now, self.my_node.identifier, backoff)
+        logger.info('At time: %s (us) ---- %s: %s sets its back-off counter as: %s',
+                    self.env.now, self.my_node.get_type_string(), self.my_node.identifier, backoff)
 
         while to_wait:
             # wait until the channel becomes idle
@@ -89,8 +89,8 @@ class CsmaCa:
             # start listen the channel at backoff stage
             self.env.process(self.listen(self.channel_states, self.simulator.network_nodes, pkd))
 
-            logger.info('At time: %s (us) ---- NODE: %s should wait for %s to countdown its back-off counter',
-                        self.env.now, self.my_node.identifier, to_wait)
+            logger.info('At time: %s (us) ---- %s: %s should wait for %s to countdown its back-off counter',
+                        self.env.now, self.my_node.get_type_string(), self.my_node.identifier, to_wait)
             start_time = self.env.now  # start to wait
 
             try:
@@ -105,8 +105,8 @@ class CsmaCa:
                 with self.channel_states[self.my_node.identifier].request() as req:
                     yield req
 
-                    logger.info('At time: %s (us) ---- NODE: %s can send packet (pkd id: %s)',
-                                self.env.now, self.my_node.identifier, pkd.packet_id)
+                    logger.info('At time: %s (us) ---- %s: %s can send packet (pkd id: %s)',
+                                self.env.now, self.my_node.get_type_string(), self.my_node.identifier, pkd.packet_id)
 
                     pkd.transmitting_start_time = self.env.now
                     transmission_mode = pkd.transmission_mode
@@ -119,8 +119,8 @@ class CsmaCa:
                         yield self.env.timeout(pkd.packet_length / config.BIT_RATE * 1e6)  # transmission delay
 
                         # only unicast data packets need to wait for ACK
-                        logger.info('At time: %s (us) ---- NODE: %s starts to wait ACK for packet: %s',
-                                    self.env.now, self.my_node.identifier, pkd.packet_id)
+                        logger.info('At time: %s (us) ---- %s: %s starts to wait ACK for packet: %s',
+                                    self.env.now, self.my_node.get_type_string(), self.my_node.identifier, pkd.packet_id)
 
                         if self.enable_ack:
                             # used to identify the process of waiting ack
@@ -140,9 +140,9 @@ class CsmaCa:
 
             except simpy.Interrupt:
                 already_wait = self.env.now - start_time
-                logger.info('At time: %s (us) ---- The back-off processof NODE:%s was interrupted, it has been waiting'
+                logger.info('At time: %s (us) ---- The back-off processof %s:%s was interrupted, it has been waiting'
                             ' for: %s, original to_wait is: %s',
-                            self.env.now, self.my_node.identifier, already_wait, to_wait)
+                            self.env.now, self.my_node.get_type_string(), self.my_node.identifier, already_wait, to_wait)
 
                 to_wait -= already_wait  # the remaining waiting time
 
@@ -183,8 +183,8 @@ class CsmaCa:
 
         except simpy.Interrupt:
             # receive ACK in time
-            logger.info('At time: %s (us) ---- NODE: %s receives the ACK for data packet: %s',
-                        self.env.now, self.my_node.identifier, pkd.packet_id)
+            logger.info('At time: %s (us) ---- %s: %s receives the ACK for data packet: %s',
+                        self.env.now, self.my_node.get_type_string(), self.my_node.identifier, pkd.packet_id)
 
     def wait_idle_channel(self, sender_node, nodes):
         """
@@ -208,8 +208,8 @@ class CsmaCa:
         :return: none
         """
 
-        logger.info('At time: %s (us) ---- NODE: %s starts to listen the channel and perform back-off',
-                     self.env.now, self.my_node.identifier)
+        logger.info('At time: %s (us) ---- %s: %s starts to listen the channel and perform back-off',
+                     self.env.now, self.my_node.get_type_string(), self.my_node.identifier)
 
         key = ''.join(['mac_send', str(self.my_node.identifier), '_', str(pkd.packet_id)])
 
