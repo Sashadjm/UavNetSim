@@ -333,7 +333,7 @@ class NetworkNode:
                                 "At time: %s (us) ---- Packet %s from %s: %s is received by %s: %s, sinr is: %s",
                                 self.env.now,
                                 pkd.packet_id,
-                                sender.get_type_string(),
+                                self.simulator.network_nodes[sender].get_type_string(),
                                 sender,
                                 self.get_type_string(),
                                 self.identifier,
