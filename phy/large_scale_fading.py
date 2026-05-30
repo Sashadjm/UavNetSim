@@ -61,8 +61,8 @@ def sinr_calculator(my_node, main_nodes_list, all_transmitting_nodes_list):
         else:
             pass
 
-        logger.info('At time: %s (us) ---- The SINR of main link between NODE (Tx) %s and NODE (Rx) %s is: %s',
-                    simulator.env.now, main_node_id, receiver.identifier, sinr)
+        logger.info('At time: %s (us) ---- The SINR of main link between %s (Tx) %s and %s (Rx) %s is: %s',
+                    simulator.env.now, simulator.network_nodes[main_node_id].get_type_string(), main_node_id, receiver.get_type_string(), receiver.identifier, sinr)
 
         sinr_list.append(sinr)
 

@@ -101,8 +101,8 @@ class Dsdv:
                                     channel_id=channel_id)
         hello_pkd.transmission_mode = 1  # broadcast
 
-        logger.info('At time: %s (us) ---- NODE: %s has a hello packet to broadcast',
-                     self.simulator.env.now, self.my_node.identifier)
+        logger.info('At time: %s (us) ---- %s: %s has a hello packet to broadcast',
+                     self.simulator.env.now, self.my_node.get_type_string(), self.my_node.identifier)
 
         self.simulator.metrics.control_packet_num += 1
         self.my_node.transmitting_queue.put(hello_pkd)

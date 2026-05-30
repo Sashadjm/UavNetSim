@@ -1,4 +1,6 @@
 import simpy
+from path_planning.astar.astar import a_star_3d
+from path_planning.path_following_3d import PathFollowing3D
 from utils import config
 from entities.obstacle import RectangularObstacle
 from simulator.simulator import Simulator
@@ -23,11 +25,16 @@ def setup_scenario_1(sim: Simulator):
     """
     sim.add_obstacle(RectangularObstacle([10, 0, 0], [10, 19, 15])) # Grid coordinates
 
-    sim.add_antenna((150, 300, 0))
+    sim.add_antenna((100, 300, 0))
 
-    sim.add_user((450, 300, 0))
+    sim.add_user((500, 300, 0))
 
-    sim.add_drone((300, 300, 90))
+    # Drone starts at the antenna
+    drone = sim.add_drone((100, 300, 0))
+
+    # Make it so that the drone moves towards the top of the wall to route packets from antenna to user
+    drone_path = a_star_3d((100, 300, 0), (300, 300, 100), sim.grid)
+    PathFollowing3D(drone, drone_path)
 
 
 if __name__ == "__main__":
