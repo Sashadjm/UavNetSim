@@ -39,7 +39,7 @@ class Antenna(NetworkNode):
 
         super().start_sim()
 
-        self.env.process(self.generate_data_packet())
+        self.env.process(self.generate_data_packet("Uniform"))
 
 
     def generate_data_packet(self, traffic_pattern="Poisson"):
@@ -47,8 +47,8 @@ class Antenna(NetworkNode):
         while True:
             if not self.sleep:
                 if traffic_pattern == "Uniform":
-                    # the node generates a data packet every 0.5s with jitter
-                    yield self.env.timeout(self.rng_node.randint(500000, 505000))
+                    # the node generates a data packet every 0.04 with jitter
+                    yield self.env.timeout(self.rng_node.randint(40000, 45000))
                 elif traffic_pattern == "Poisson":
                     """
                     The process of generating data packets by nodes follows Poisson distribution, thus the generation

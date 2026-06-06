@@ -176,26 +176,26 @@ def grid_cell_to_obstacle(cell_x: int, cell_y: int, cell_z: int) -> tuple[np.nda
     """
 
     # Compute the size of one cell
-    cell_length = config.MAP_LENGTH / config.GRID_RESOLUTION
-    cell_width = config.MAP_WIDTH / config.GRID_RESOLUTION
-    cell_height = config.MAP_HEIGHT / config.GRID_RESOLUTION
+    cell_length = config.GRID_RESOLUTION
+    cell_width = config.GRID_RESOLUTION
+    cell_height = config.GRID_RESOLUTION
 
-    min = np.asarray([cell_x * cell_length, cell_y * cell_width, cell_z * cell_height])
-    max = min + np.asarray([cell_length, cell_width, cell_height])
+    min_corner = np.asarray([cell_x * cell_length, cell_y * cell_width, cell_z * cell_height])
+    max_corner = min_corner + np.asarray([cell_length, cell_width, cell_height])
 
-    return (min, max)
+    return (min_corner, max_corner)
 
 
 def grid_to_obstacles(grid: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:
     """
     The world is divided by a grid of size config.GRID_RESOLUTION ** 3.
     Cells of this grid can either be air or rectangular obstacles filling the whole grid.
-    We want to convert 
+    We want to convert
     """
     res = []
-    for x in range(0, config.GRID_RESOLUTION):
-        for y in range(0, config.GRID_RESOLUTION):
-            for z in range(0, config.GRID_RESOLUTION):
+    for x in range(0, grid.shape[0]):
+        for y in range(0, grid.shape[1]):
+            for z in range(0, grid.shape[2]):
                 if grid[x, y, z] != 0:
                     res.append(grid_cell_to_obstacle(x, y, z))
 

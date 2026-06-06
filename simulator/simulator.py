@@ -1,3 +1,4 @@
+import math
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -84,7 +85,11 @@ class Simulator:
         self.network_nodes: list[NetworkNode] = []
 
         # Create the (for now empty) grid
-        self.grid = np.zeros((config.GRID_RESOLUTION, config.GRID_RESOLUTION, config.GRID_RESOLUTION))
+        grid_length = int(math.ceil(config.MAP_LENGTH / config.GRID_RESOLUTION))
+        grid_width = int(math.ceil(config.MAP_WIDTH / config.GRID_RESOLUTION))
+        grid_height = int(math.ceil(config.MAP_HEIGHT / config.GRID_RESOLUTION))
+        self.grid = np.zeros((grid_length, grid_width, grid_height))
+
         self.obstacles: list[Obstacle] = []
         self.obstacle_type = []
 

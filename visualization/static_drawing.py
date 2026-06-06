@@ -14,10 +14,11 @@ def scatter_plot(simulator):
 
     filled = simulator.grid > 0
 
+    nx, ny, nz = filled.shape
     res = config.GRID_RESOLUTION
-    x_edges = np.linspace(0, config.MAP_LENGTH, res + 1)
-    y_edges = np.linspace(0, config.MAP_WIDTH, res + 1)
-    z_edges = np.linspace(0, config.MAP_HEIGHT, res + 1)
+    x_edges = np.linspace(0, nx * res, nx + 1)
+    y_edges = np.linspace(0, ny * res, ny + 1)
+    z_edges = np.linspace(0, nz * res, nz + 1)
 
     X, Y, Z = np.meshgrid(x_edges, y_edges, z_edges, indexing='ij')
 

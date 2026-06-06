@@ -1,6 +1,11 @@
 import numpy as np
 from collections import defaultdict
+
+from matplotlib import pyplot as plt
 from openpyxl import load_workbook
+
+from entities.packet import DataPacket
+from utils import config
 
 
 class Metrics:
@@ -40,6 +45,11 @@ class Metrics:
         self.datapacket_arrived = set()  # all data packets that arrives the destination
         self.datapacket_generated_num = 0
 
+        # For speed graphing
+        self.datapacket_arrival_time = []
+        self.datapacket_size = []
+
+
         self.delivery_time = []
         self.deliver_time_dict = defaultdict()
 
@@ -56,6 +66,10 @@ class Metrics:
     def calculate_metrics(self, received_packet):
         """Calculate the corresponding metrics when the destination receives a data packet successfully"""
         latency = self.simulator.env.now - received_packet.creation_time  # in us
+
+        if isinstance(received_packet, DataPacket):
+            self.datapacket_arrival_time.append(self.simulator.env.now)
+            self.datapacket_size.append(received_packet.packet_length)
 
         self.deliver_time_dict[received_packet.packet_id] = latency
         self.throughput_dict[received_packet.packet_id] = received_packet.packet_length / (latency / 1e6)
@@ -89,3 +103,21 @@ class Metrics:
         print('Average hop count is: ', hop_cnt)
         print('Collision num is: ', self.collision_num)
         print('Average mac delay is: ', average_mac_delay, 'ms')
+
+    def graph_speed(self):
+        # we calculate the speed for each second
+        interval = 0.5 * 1e6
+
+        bins = bins = np.arange(0, config.SIM_TIME + interval, interval)
+        bytes_per_interval, bin_edges = np.histogram(self.datapacket_arrival_time, bins=bins, weights=self.datapacket_size)
+        speed = bytes_per_interval / interval # in bytes/s
+        speed = (speed * 8) / 1_000_000 # in Mbps
+
+        plt.figure(figsize=(10, 5))
+        plt.stairs(speed, bin_edges, fill=True, alpha=0.5, color='blue', edgecolor='darkblue')
+
+        plt.xlabel(f"Time (seconds)")
+        plt.ylabel("Speed (Mbps)")
+        plt.title("Speed over time")
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.show()

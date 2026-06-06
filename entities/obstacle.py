@@ -1,3 +1,5 @@
+import math
+
 from utils.util_function import euclidean_distance_3d
 from utils import config
 
@@ -51,7 +53,15 @@ class RectangularObstacle(Obstacle):
         self.id = obstacle_id
 
     def add_to_grid(self, grid):
-        for x in range(self.lower[0], self.upper[0]+1):
-            for y in range(self.lower[1], self.upper[1]+1):
-                for z in range(self.lower[2], self.upper[2]+1):
-                    grid[x, y, z] = self.id
+        res = config.GRID_RESOLUTION
+
+        x_start = max(0, int(math.floor(self.lower[0] / res)))
+        x_end = min(grid.shape[0], int(math.ceil(self.upper[0] / res)))
+
+        y_start = max(0, int(math.floor(self.lower[1] / res)))
+        y_end = min(grid.shape[1], int(math.ceil(self.upper[1] / res)))
+
+        z_start = max(0, int(math.floor(self.lower[2] / res)))
+        z_end = min(grid.shape[2], int(math.ceil(self.upper[2] / res)))
+
+        grid[x_start:x_end, y_start:y_end, z_start:z_end] = self.id

@@ -589,9 +589,9 @@ class SimulationVisualizer:
         res = config.GRID_RESOLUTION
 
         # Generate physical mesh coordinates
-        x_edges = np.linspace(0, config.MAP_LENGTH, res + 1)
-        y_edges = np.linspace(0, config.MAP_WIDTH, res + 1)
-        z_edges = np.linspace(0, config.MAP_HEIGHT, res + 1)
+        x_edges = np.linspace(0, config.MAP_LENGTH, filled.shape[0] + 1)
+        y_edges = np.linspace(0, config.MAP_WIDTH, filled.shape[1] + 1)
+        z_edges = np.linspace(0, config.MAP_HEIGHT, filled.shape[2] + 1)
         X, Y, Z = np.meshgrid(x_edges, y_edges, z_edges, indexing='ij')
 
         # Render voxels

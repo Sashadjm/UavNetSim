@@ -8,7 +8,7 @@ MAP_LENGTH = 600  # m, length of the map
 MAP_WIDTH = 600  # m, width of the map
 MAP_HEIGHT = 100  # m, height of the map
 #SIM_TIME = 30 * 1e6  # us, total simulation time
-SIM_TIME = 5 * 1e6  # us, total simulation time
+SIM_TIME = 20 * 1e6  # us, total simulation time
 NUMBER_OF_DRONES = 10  # number of drones in the network
 NUMBER_OF_USERS = 10 # number of users in the network
 NUMBER_OF_ANTENNAS = 1 # number of antennas in the network
@@ -37,7 +37,7 @@ MAX_QUEUE_SIZE = 200  # maximum size of drone's queue
 # ----------------------- hardware parameters of users ----------------------- #
 
 # ----------------------- radio parameters ----------------------- #
-TRANSMITTING_POWER = 0.1  # in Watt
+TRANSMITTING_POWER = 0.2  # in Watt
 LIGHT_SPEED = 3 * 1e8  # light speed (m/s)
 CARRIER_FREQUENCY = IEEE_802_11['carrier_frequency']  # carrier frequency (Hz)
 NOISE_POWER = 4 * 1e-11  # noise power (Watt)
